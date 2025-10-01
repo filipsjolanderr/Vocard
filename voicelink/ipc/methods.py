@@ -167,12 +167,12 @@ async def skipTo(player: Player, member: Member, data: Dict) -> None:
             pass
 
         elif member in player.skip_votes:
-            return error_msg(player.get_msg('voted'), user_id=member.id)
+            return error_msg(player.get_msg('voting.voted'), user_id=member.id)
         
         else:
             player.skip_votes.add(member)
             if len(player.skip_votes) < (required := player.required()):
-                return error_msg(player.get_msg('skipVote').format(member, len(player.skip_votes), required), guild_id=player.guild.id)
+                return error_msg(player.get_msg('player.controls.skip.vote').format(member, len(player.skip_votes), required), guild_id=player.guild.id)
 
     index = data.get("index", 1)
     if index > 1:
@@ -188,12 +188,12 @@ async def backTo(player: Player, member: Member, data: Dict) -> None:
             pass
 
         elif member in player.skip_votes:
-            return error_msg(player.get_msg('voted'), user_id=member.id)
+            return error_msg(player.get_msg('voting.voted'), user_id=member.id)
         
         else:
             player.skip_votes.add(member)
             if len(player.skip_votes) < (required := player.required()):
-                return error_msg(player.get_msg('backVote').format(member, len(player.skip_votes), required), guild_id=player.guild.id)
+                return error_msg(player.get_msg('player.controls.back.vote').format(member, len(player.skip_votes), required), guild_id=player.guild.id)
     
     index = data.get("index", 1)
     if not player.is_playing:
@@ -253,11 +253,11 @@ async def searchAndPlay(player: Player, member: Member, data: Dict) -> None:
 async def shuffleTrack(player: Player, member: Member, data: Dict) -> None:
     if not player.is_privileged(member):
         if member in player.shuffle_votes:
-            return error_msg(player.get_msg('voted'), user_id=member.id) 
+            return error_msg(player.get_msg('voting.voted'), user_id=member.id) 
 
         player.shuffle_votes.add(member)
         if len(player.shuffle_votes) < (required := player.required()):
-            return error_msg(player.get_msg('shuffleVote').format(member, len(player.skip_votes), required), guild_id=player.guild.id)
+            return error_msg(player.get_msg('player.controls.shuffle.vote').format(member, len(player.skip_votes), required), guild_id=player.guild.id)
     
     await player.shuffle(data.get("type", "queue"), member)
 
@@ -286,19 +286,19 @@ async def updatePause(player: Player, member: Member, data: Dict) -> None:
     if not player.is_privileged(member):
         if pause:
             if member in player.pause_votes:
-                return error_msg(player.get_msg('voted'), user_id=member.id)
+                return error_msg(player.get_msg('voting.voted'), user_id=member.id)
 
             player.pause_votes.add(member)
             if len(player.pause_votes) < (required := player.required()):
-                return error_msg(player.get_msg('pauseVote').format(member, len(player.pause_votes), required), guild_id=player.guild.id)
+                return error_msg(player.get_msg('player.controls.pause.vote').format(member, len(player.pause_votes), required), guild_id=player.guild.id)
 
         else:
             if member in player.resume_votes:
-                return error_msg(player.get_msg('voted'), user_id=member.id)
+                return error_msg(player.get_msg('voting.voted'), user_id=member.id)
             
             player.resume_votes.add(member)
             if len(player.resume_votes) < (required := player.required()):
-                return error_msg(player.get_msg('resumeVote').format(member, len(player.resume_votes), required), guild_id=player.guild.id)
+                return error_msg(player.get_msg('player.controls.resume.vote').format(member, len(player.resume_votes), required), guild_id=player.guild.id)
 
     await player.set_pause(pause, member)
 
@@ -309,7 +309,7 @@ async def updatePosition(player: Player, member: Member, data: Dict) -> None:
 
 async def toggleAutoplay(player: Player, member: Member, data: Dict) -> Dict:
     if not player.is_privileged(member):
-        return error_msg(player.get_msg('missingAutoPlayPerm'))
+        return error_msg(player.get_msg('permissions.missingAutoPlay'))
 
     check = data.get("status", False)
     player.settings['autoplay'] = check

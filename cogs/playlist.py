@@ -57,7 +57,7 @@ async def check_playlist(ctx: commands.Context, name: str = None, full: bool = F
     """Get user's playlist data with various filtering options."""
     user_playlists = await MongoDBHandler.get_user(ctx.author.id, d_type='playlist')
 
-    if not ctx.interaction.response.is_done():
+    if isinstance(ctx, discord.Interaction) and not ctx.interaction.response.is_done():
         await ctx.defer()
     
     if full:
@@ -223,10 +223,10 @@ class Playlists(commands.Cog, name="playlist"):
         result = await check_playlist(ctx, name.lower() if name else None)
 
         if not result['playlist']:
-            return await send_localized_message(ctx, 'playlistNotFound', name, ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.errors.notFound', name, ephemeral=True)
         max_p, max_t, _ = Config().get_playlist_config()
         if result['position'] > max_p:
-            return await send_localized_message(ctx, 'playlistNotAccess', ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.errors.noAccess', ephemeral=True)
 
         player: voicelink.Player = ctx.guild.voice_client
         if not player:
@@ -236,7 +236,7 @@ class Playlists(commands.Cog, name="playlist"):
             tracks = await search_playlist(result['playlist']['uri'], ctx.author, time_needed=False)
         else:
             if not result['playlist']['tracks']:
-                return await send_localized_message(ctx, 'playlistNoTrack', result['playlist']['name'], ephemeral=True)
+                return await send_localized_message(ctx, 'playlist.errors.noTrack', result['playlist']['name'], ephemeral=True)
 
             _tracks = []
             for track in result['playlist']['tracks'][:max_t]:
@@ -245,12 +245,12 @@ class Playlists(commands.Cog, name="playlist"):
             tracks = {"name": result['playlist']['name'], "tracks": _tracks}
 
         if not tracks:
-            return await send_localized_message(ctx, 'playlistNoTrack', result['playlist']['name'], ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.errors.noTrack', result['playlist']['name'], ephemeral=True)
 
         if value and 0 < value <= (len(tracks['tracks'])):
             tracks['tracks'] = [tracks['tracks'][value - 1]]
         await player.add_track(tracks['tracks'])
-        await send_localized_message(ctx, 'playlistPlay', result['playlist']['name'], len(tracks['tracks'][:max_t]))
+        await send_localized_message(ctx, 'playlist.actions.play', result['playlist']['name'], len(tracks['tracks'][:max_t]))
 
         if not player.is_playing:
             await player.do_next()
@@ -283,7 +283,7 @@ class Playlists(commands.Cog, name="playlist"):
                 })
                 
         view = PlaylistViewManager(ctx, playlist_results)
-        view.response = await dispatch_message(ctx, content=await view.build_embed(), view=view, ephemeral=True)
+        view.response = await dispatch_message(ctx, content=view.build_embed(), view=view, ephemeral=True)
 
     @playlist.command(name="create", aliases=get_aliases("create"))
     @app_commands.describe(
@@ -294,25 +294,25 @@ class Playlists(commands.Cog, name="playlist"):
     async def create(self, ctx: commands.Context, name: str, link: str = None):
         "Create your custom playlist."
         if len(name) > 10:
-            return await send_localized_message(ctx, 'playlistOverText', ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.errors.nameOverLimit', ephemeral=True)
         
         max_p, _, _ = Config().get_playlist_config()
         user = await check_playlist(ctx, full=True)
 
         if len(user) >= max_p:
-            return await send_localized_message(ctx, 'overPlaylistCreation', max_p, ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.errors.limitReached', max_p, ephemeral=True)
         
         for data in user:
             if user[data]['name'].lower() == name.lower():
-                return await send_localized_message(ctx, 'playlistExists', name, ephemeral=True)
+                return await send_localized_message(ctx, 'playlist.errors.exists', name, ephemeral=True)
         if link:
             tracks = await voicelink.NodePool.get_node().get_tracks(link, requester=ctx.author)
             if not isinstance(tracks, voicelink.Playlist):
-                return await send_localized_message(ctx, "playlistNotInvalidUrl", ephemeral=True)
+                return await send_localized_message(ctx, "playlist.errors.invalidUrl", ephemeral=True)
 
         data = {'uri': link, 'perms': {'read': []}, 'name': name, 'type': 'link'} if link else {'tracks': [], 'perms': {'read': [], 'write': [], 'remove': []}, 'name': name, 'type': 'playlist'}
         await MongoDBHandler.update_user(ctx.author.id, {"$set": {f"playlist.{assign_playlist_id([data for data in user])}": data}})
-        await send_localized_message(ctx, "playlistCreated", name)
+        await send_localized_message(ctx, "playlist.actions.create", name)
 
     @playlist.command(name="delete", aliases=get_aliases("delete"))
     @app_commands.describe(name="The name of the playlist.")
@@ -322,15 +322,15 @@ class Playlists(commands.Cog, name="playlist"):
         "Delete your custom playlist."
         result = await check_playlist(ctx, name.lower(), share=False)
         if not result['playlist']:
-            return await send_localized_message(ctx, "playlistNotFound", name, ephemeral=True)
+            return await send_localized_message(ctx, "playlist.errors.notFound", name, ephemeral=True)
         if result['id'] == "200":
-            return await send_localized_message(ctx, "playlistDeleteError", ephemeral=True)
+            return await send_localized_message(ctx, "playlist.errors.deleteDefault", ephemeral=True)
 
         if result['playlist']['type'] == 'share':
             await MongoDBHandler.update_user(result['playlist']['user'], {"$pull": {f"playlist.{result['playlist']['referId']}.perms.read": ctx.author.id}})
 
         await MongoDBHandler.update_user(ctx.author.id, {"$unset": {f"playlist.{result['id']}": 1}})
-        return await send_localized_message(ctx, "playlistRemove", result["playlist"]["name"])
+        return await send_localized_message(ctx, "playlist.actions.remove", result["playlist"]["name"])
 
     @playlist.command(name="share", aliases=get_aliases("share"))
     @app_commands.describe(
@@ -342,26 +342,26 @@ class Playlists(commands.Cog, name="playlist"):
     async def share(self, ctx: commands.Context, member: discord.Member, name: str):
         "Share your custom playlist with your friends."
         if member.id == ctx.author.id:
-            return await send_localized_message(ctx, 'playlistSendErrorPlayer', ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.sharing.sendErrorPlayer', ephemeral=True)
         if member.bot:
-            return await send_localized_message(ctx, 'playlistSendErrorBot', ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.sharing.sendErrorBot', ephemeral=True)
         result = await check_playlist(ctx, name.lower(), share=False)
         if not result['playlist']:
-            return await send_localized_message(ctx, 'playlistNotFound', name, ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.errors.notFound', name, ephemeral=True)
 
         if result['playlist']['type'] == 'share':
-            return await send_localized_message(ctx, 'playlistBelongs', result['playlist']['user'], ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.sharing.belongs', result['playlist']['user'], ephemeral=True)
         if member.id in result['playlist']['perms']['read']:
-            return await send_localized_message(ctx, 'playlistShare', member, ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.sharing.alreadyShared', member, ephemeral=True)
 
         receiver = await MongoDBHandler.get_user(member.id)
         if not receiver:
-            return await send_localized_message(ctx, 'noPlaylistAcc', member)
+            return await send_localized_message(ctx, 'playlist.sharing.noAccount', member)
         for mail in receiver['inbox']:
             if mail['sender'] == ctx.author.id and mail['referId'] == result['id']:
-                return await send_localized_message(ctx, 'playlistSent', ephemeral=True)
+                return await send_localized_message(ctx, 'playlist.sharing.alreadySent', ephemeral=True)
         if len(receiver['inbox']) >= 10:
-            return await send_localized_message(ctx.guild.id, 'inboxFull', member, ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.inbox.full', member, ephemeral=True)
 
         await MongoDBHandler.update_user(
             member.id, 
@@ -374,7 +374,7 @@ class Playlists(commands.Cog, name="playlist"):
                 'type': 'invite'
             }}}
         )
-        return await send_localized_message(ctx, "invitationSent", member)
+        return await send_localized_message(ctx, "playlist.sharing.invitationSent", member)
 
     @playlist.command(name="rename", aliases=get_aliases("rename"))
     @app_commands.describe(
@@ -386,22 +386,22 @@ class Playlists(commands.Cog, name="playlist"):
     async def rename(self, ctx: commands.Context, name: str, newname: str) -> None:
         "Rename your custom playlist."
         if len(newname) > 10:
-            return await send_localized_message(ctx, 'playlistOverText', ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.errors.nameOverLimit', ephemeral=True)
         if name.lower() == newname.lower():
-            return await send_localized_message(ctx, 'playlistSameName', ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.errors.sameName', ephemeral=True)
         user = await check_playlist(ctx, full=True)
         found, id = False, 0
         for data in user:
             if user[data]['name'].lower() == name.lower():
                 found, id = True, data
             if user[data]['name'].lower() == newname.lower():
-                return await send_localized_message(ctx, 'playlistExists', ephemeral=True)
+                return await send_localized_message(ctx, 'playlist.errors.exists', ephemeral=True)
 
         if not found:
-            return await send_localized_message(ctx.guild.id, 'playlistNotFound', name, ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.errors.notFound', name, ephemeral=True)
 
         await MongoDBHandler.update_user(ctx.author.id, {"$set": {f'playlist.{id}.name': newname}})
-        await send_localized_message(ctx, 'playlistRenamed', name, newname)
+        await send_localized_message(ctx, 'playlist.actions.renamed', name, newname)
 
     @playlist.command(name="inbox", aliases=get_aliases("inbox"))
     @commands.dynamic_cooldown(cooldown_check, commands.BucketType.guild)
@@ -411,7 +411,7 @@ class Playlists(commands.Cog, name="playlist"):
         max_p, _, _ = Config().get_playlist_config()
 
         if not user['inbox']:
-            return await send_localized_message(ctx, "inboxNoMsg", ephemeral=True)
+            return await send_localized_message(ctx, "playlist.inbox.noMessages", ephemeral=True)
 
         inbox = user['inbox'].copy()
         view = InboxView(ctx.author, user['inbox'])
@@ -447,26 +447,26 @@ class Playlists(commands.Cog, name="playlist"):
         "Add tracks in to your custom playlist."
         result = await check_playlist(ctx, name.lower(), share=False)
         if not result['playlist']:
-            return await send_localized_message(ctx, 'playlistNotFound', name, ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.errors.notFound', name, ephemeral=True)
         if result['playlist']['type'] in ['share', 'link']:
-            return await send_localized_message(ctx, 'playlistNotAllow', ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.errors.notAllowed', ephemeral=True)
         
         _, max_t, _ = Config().get_playlist_config()
         if len(result['playlist']['tracks']) >= max_t:
-            return await send_localized_message(ctx, 'playlistLimitTrack', max_t, ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.errors.trackLimitReached', max_t, ephemeral=True)
 
         results = await voicelink.NodePool.get_node().get_tracks(query, requester=ctx.author)
         if not results:
-            return await send_localized_message(ctx, 'noTrackFound')
+            return await send_localized_message(ctx, 'player.errors.noTrackFound')
         
         if isinstance(results, voicelink.Playlist):
-            return await send_localized_message(ctx, 'playlistPlaylistLink', ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.errors.playlistLinkNotAllowed', ephemeral=True)
         
         if results[0].is_stream:
-            return await send_localized_message(ctx, 'playlistStream', ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.errors.streamNotAllowed', ephemeral=True)
 
         await MongoDBHandler.update_user(ctx.author.id, {"$push": {f'playlist.{result["id"]}.tracks': results[0].track_id}})
-        await send_localized_message(ctx, 'playlistAdded', results[0].title, ctx.author, result['playlist']['name'])
+        await send_localized_message(ctx, 'playlist.actions.trackAdded', results[0].title, ctx.author, result['playlist']['name'])
 
     @playlist.command(name="remove", aliases=get_aliases("remove"))
     @commands.dynamic_cooldown(cooldown_check, commands.BucketType.guild)
@@ -479,16 +479,16 @@ class Playlists(commands.Cog, name="playlist"):
         "Remove song from your favorite playlist."
         result = await check_playlist(ctx, name.lower(), share=False)
         if not result['playlist']:
-            return await send_localized_message(ctx, 'playlistNotFound', name, ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.errors.notFound', name, ephemeral=True)
         if result['playlist']['type'] in ['link', 'share']:
-            return await send_localized_message(ctx, 'playlistNotAllow', ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.errors.notAllowed', ephemeral=True)
         if not 0 < position <= len(result['playlist']['tracks']):
-            return await send_localized_message(ctx, 'playlistPositionNotFound', position, name)
+            return await send_localized_message(ctx, 'playlist.errors.positionNotFound', position, name)
 
         await MongoDBHandler.update_user(ctx.author.id, {"$pull": {f'playlist.{result["id"]}.tracks': result['playlist']['tracks'][position - 1]}})
         
         track = voicelink.Track.decode(result['playlist']['tracks'][position - 1])
-        await send_localized_message(ctx, 'playlistRemoved', track.get("title"), ctx.author, name)
+        await send_localized_message(ctx, 'playlist.actions.trackRemoved', track.get("title"), ctx.author, name)
 
     @playlist.command(name="clear", aliases=get_aliases("clear"))
     @commands.dynamic_cooldown(cooldown_check, commands.BucketType.guild)
@@ -497,13 +497,13 @@ class Playlists(commands.Cog, name="playlist"):
         "Remove all songs from your favorite playlist."
         result = await check_playlist(ctx, name.lower(), share=False)
         if not result['playlist']:
-            return await send_localized_message(ctx, 'playlistNotFound', name, ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.errors.notFound', name, ephemeral=True)
 
         if result['playlist']['type'] in ['link', 'share']:
-            return await send_localized_message(ctx, 'playlistNotAllow', ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.errors.notAllowed', ephemeral=True)
 
         await MongoDBHandler.update_user(ctx.author.id, {"$set": {f'playlist.{result["id"]}.tracks': []}})
-        await send_localized_message(ctx, 'playlistClear', name)
+        await send_localized_message(ctx, 'playlist.actions.cleared', name)
 
     @playlist.command(name="export", aliases=get_aliases("export"))
     @commands.dynamic_cooldown(cooldown_check, commands.BucketType.guild)
@@ -512,13 +512,13 @@ class Playlists(commands.Cog, name="playlist"):
         "Exports the entire playlist to a text file"
         result = await check_playlist(ctx, name.lower())
         if not result['playlist']:
-            return await send_localized_message(ctx, 'playlistNotFound', name, ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.errors.notFound', name, ephemeral=True)
         
         if result['playlist']['type'] == 'link':
             tracks = await search_playlist(result['playlist']['uri'], ctx.author, time_needed=False)
         else:
             if not result['playlist']['tracks']:
-                return await send_localized_message(ctx, 'playlistNoTrack', result['playlist']['name'], ephemeral=True)
+                return await send_localized_message(ctx, 'playlist.errors.noTrack', result['playlist']['name'], ephemeral=True)
 
             _tracks = []
             for track in result['playlist']['tracks']:
@@ -527,7 +527,7 @@ class Playlists(commands.Cog, name="playlist"):
             tracks = {"name": result['playlist']['name'], "tracks": _tracks}
 
         if not tracks:
-            return await send_localized_message(ctx, 'playlistNoTrack', result['playlist']['name'], ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.errors.noTrack', result['playlist']['name'], ephemeral=True)
 
         temp = ""
         raw = "----------->Raw Info<-----------\n"
@@ -555,17 +555,17 @@ class Playlists(commands.Cog, name="playlist"):
     async def _import(self, ctx: commands.Context, name: str, attachment: discord.Attachment):
         "Create your custom playlist."
         if len(name) > 10:
-            return await send_localized_message(ctx, 'playlistOverText', ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.errors.nameOverLimit', ephemeral=True)
         
         max_p, _, _ = Config().get_playlist_config()
         user = await check_playlist(ctx, full=True)
 
         if len(user) >= max_p:
-            return await send_localized_message(ctx, 'overPlaylistCreation', max_p, ephemeral=True)
+            return await send_localized_message(ctx, 'playlist.errors.limitReached', max_p, ephemeral=True)
         
         for data in user:
             if user[data]['name'].lower() == name.lower():
-                return await send_localized_message(ctx, 'playlistExists', name, ephemeral=True)
+                return await send_localized_message(ctx, 'playlist.errors.exists', name, ephemeral=True)
 
         try:
             bytes = await attachment.read()
@@ -574,7 +574,7 @@ class Playlists(commands.Cog, name="playlist"):
 
             data = {'tracks': track_ids, 'perms': {'read': [], 'write': [], 'remove': []}, 'name': name, 'type': 'playlist'}
             await MongoDBHandler.update_user(ctx.author.id, {"$set": {f"playlist.{assign_playlist_id([data for data in user])}": data}})
-            await send_localized_message(ctx, 'playlistCreated', name)
+            await send_localized_message(ctx, 'playlist.actions.create', name)
 
         except Exception as e:
             logger.error("Decode Error", exc_info=e)

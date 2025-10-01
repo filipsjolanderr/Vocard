@@ -64,7 +64,7 @@ if TYPE_CHECKING:
     from .ipc import IPCClient
 
 async def connect_channel(ctx: Union[commands.Context, Interaction], channel: VoiceChannel = None):
-    texts = await LangHandler.get_lang(ctx.guild.id, "noChannel", "noPermission")
+    texts = await LangHandler.get_lang(ctx.guild.id, "voice.connection.noChannel", "voice.connection.noPermission")
     try:
         channel = channel or ctx.author.voice.channel if isinstance(ctx, commands.Context) else ctx.user.voice.channel
     except:
@@ -268,7 +268,7 @@ class Player(VoiceProtocol):
         """
         return LangHandler._get_lang(self.settings.get("lang"), *keys)
 
-    def required(self, leave=False):
+    def required(self, leave: bool = False):
         """
         Calculates the number of votes required for a specific action in the voice channel.
 
@@ -279,8 +279,7 @@ class Player(VoiceProtocol):
 
         required = ceil((len(self.channel.members) - 1) / 2.5)
         if leave:
-            if len(self.channel.members) == 3:
-                required = 2
+            required += 1
         
         return required
     
@@ -304,7 +303,7 @@ class Player(VoiceProtocol):
         
         manage_perm = user.guild_permissions.manage_guild
         if check_user_join and not self.is_user_join(user):
-            raise VoicelinkException(self.get_msg('notInChannel').format(user.mention, self.channel.mention))
+            raise VoicelinkException(self.get_msg('voice.connection.notInChannel').format(user.mention, self.channel.mention))
             
         if 'dj' in self.settings and self.settings['dj']:
             return manage_perm or (self.settings['dj'] in [role.id for role in user.roles])
@@ -618,13 +617,13 @@ class Player(VoiceProtocol):
                 end_time = track.length
 
             if start_time >= end_time:
-                raise VoicelinkException(self.get_msg("invalidStartTime"))
+                raise VoicelinkException(self.get_msg("time.invalidStartTime"))
 
             track_length = track.length
             if not 0 <= start_time <= track_length:
-                raise VoicelinkException(self.get_msg("invalidStartTime", format_ms(track_length)))
+                raise VoicelinkException(self.get_msg("time.invalidStartTime", format_ms(track_length)))
             if not 0 <= end_time <= track_length:
-                raise VoicelinkException(self.get_msg("invalidEndTime", format_ms(track_length)))
+                raise VoicelinkException(self.get_msg("time.invalidEndTime", format_ms(track_length)))
 
             track.position = start_time
             track.end_time = end_time
@@ -647,7 +646,7 @@ class Player(VoiceProtocol):
                     _duplicate_tracks.append(track.uri)
             else:
                 if raw_tracks.uri in _duplicate_tracks:
-                    raise DuplicateTrack(self.get_msg("voicelinkDuplicateTrack"))
+                    raise DuplicateTrack(self.get_msg("queue.errors.duplicateTrack"))
                 
                 self._validate_time(raw_tracks, start_time, end_time)
                 position = self.queue.put_at_front(raw_tracks) if at_front else self.queue.put(raw_tracks)
@@ -716,7 +715,7 @@ class Player(VoiceProtocol):
         """Shuffles the tracks in the specified queue or history."""
         replacement = self.queue.tracks() if queue_type == "queue" else self.queue.history()
         if len(replacement) < 3:
-            raise VoicelinkException(self.get_msg('shuffleError'))
+            raise VoicelinkException(self.get_msg('player.controls.shuffle.error'))
         
         shuffle(replacement)
         self.queue.replace(queue_type, replacement)
@@ -771,7 +770,7 @@ class Player(VoiceProtocol):
         try:
             self._filters.add_filter(filter=filter)
         except FilterTagAlreadyInUse:
-            raise FilterTagAlreadyInUse(self.get_msg("filterTagAlreadyInUse"))
+            raise FilterTagAlreadyInUse(self.get_msg("effects.tagInUse"))
         
         payload = self._filters.get_all_payloads()
         await self.send(method=RequestMethod.PATCH, data={"filters": payload})

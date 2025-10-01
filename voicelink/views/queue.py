@@ -103,13 +103,13 @@ class QueueView(PaginationView):
         tracks = self.pagination.get_current_page_items()
         texts = await LangHandler.get_lang(
             self.author.guild.id,
-            "viewTitle",
-            "viewDesc",
-            "nowplayingDesc",
-            "live",
-            "queueTitle",
-            "historyTitle",
-            "playlistViewFooter",
+            "queue.view.title",
+            "queue.view.desc",
+            "player.playback.nowplayingDesc",
+            "common.status.live",
+            "queue.management.title",
+            "queue.view.historyTitle",
+            "playlist.view.footer2",
         )
 
         embed = discord.Embed(title=texts[0], color=Config().embed_color)

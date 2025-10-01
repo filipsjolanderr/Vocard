@@ -25,7 +25,7 @@ import os
 import json
 import logging
 
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Dict, Any
 
 from .config import Config
 from .mongodb import MongoDBHandler
@@ -74,13 +74,38 @@ class LangHandler:
                     filepath = os.path.join(directory, file)
                     try:
                         with open(filepath, encoding="utf8") as f:
-                            storage[lang_code] = json.load(f)
+                            storage[lang_code] = cls._flatten_json(json.load(f))
                             logger.info(f"Loaded {label}: {lang_code}")
                     except Exception as e:
                         logger.error(f"Failed to load {label} file '{filepath}': {e}")
 
         return cls
     
+    @classmethod
+    def _flatten_json(cls, nested_json: Dict[str, Any], parent_key: str = '', separator: str = '.') -> Dict[str, str]:
+        """
+        Flatten a nested JSON object into a single-level dictionary with dot-separated keys.
+        
+        Args:
+            nested_json (dict): The nested JSON object to flatten
+            parent_key (str): The base key for recursion (used internally)
+            separator (str): The separator to use between keys (default: '.')
+        
+        Returns:
+            dict: Flattened dictionary with dot-separated keys
+        """
+        flattened = {}
+        
+        for key, value in nested_json.items():
+            new_key = f"{parent_key}{separator}{key}" if parent_key else key
+            
+            if isinstance(value, dict):
+                flattened.update(cls._flatten_json(value, new_key, separator))
+            else:
+                flattened[new_key] = value
+        
+        return flattened
+
     @classmethod
     def _get_lang(cls, lang: str, *keys) -> Optional[Union[list[str], str]]:
         """

@@ -66,7 +66,7 @@ class LyricsView(PaginationView):
 
     async def build_embed(self) -> discord.Embed:
         page = self.pagination.get_current_page_items()
-        text = await LangHandler.get_lang(self.author.guild.id, "searchTitle")
+        text = await LangHandler.get_lang(self.author.guild.id, "search.title")
         embed=discord.Embed(description=page[0], color=Config().embed_color)
         embed.set_author(name=text.format(self.name), icon_url=self.author.display_avatar.url)
         return embed

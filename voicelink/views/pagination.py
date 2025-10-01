@@ -22,35 +22,59 @@ SOFTWARE.
 """
 
 import discord
-import traceback
+
+from typing import Dict, Optional
 
 from .utils import Pagination, BaseModal
+from ..language import LangHandler
+from ..mongodb import MongoDBHandler
 
 class PaginationView(discord.ui.View):
-    def __init__(self, pagination: Pagination, author: discord.Member, timeout = 300):
+    def __init__(self, pagination: Pagination, author: discord.Member, timeout: float = 300):
         super().__init__(timeout=timeout)
         
         self.pagination: Pagination = pagination
         self.author: discord.Member = author
+        self.lang: str = MongoDBHandler.get_cached_settings(author.guild.id).get("lang", "EN")
         self.update_view()
     
-    def update_view(self) -> None:
-        """Update button states and page number display based on current pagination state."""
+    def update_view(self, extra_states: Optional[Dict[str, Dict[str, str]]] = None) -> None:
+        """Update button states and labels based on the current pagination state."""
+        texts = LangHandler._get_lang(self.lang, "pagination.prev", "pagination.next")
         button_states = {
-            "fast_back": self.pagination.current_page <= 2,
-            "back": not self.pagination.has_previous_page,
-            "fast_next": self.pagination.current_page >= self.pagination.total_pages - 1,
-            "next": not self.pagination.has_next_page,
+            "fast_back": {
+                "disabled": self.pagination.current_page <= 1,
+                "label": "<<",
+            },
+            "back": {
+                "disabled": not self.pagination.has_previous_page,
+                "label": texts[0],
+            },
+            "next": {
+                "disabled": not self.pagination.has_next_page,
+                "label": texts[1],
+            },
+            "fast_next": {
+                "disabled": self.pagination.current_page >= self.pagination.total_pages - 1,
+                "label": ">>",
+            },
+            "page_number": {
+                "disabled": False,
+                "label": f"{self.pagination.current_page:02}/{self.pagination.total_pages:02}",
+            },
         }
 
+        if extra_states:
+            button_states.update(extra_states)
+
+        # Update button states and labels
         for child in self.children:
-            if child.custom_id in button_states:
-                child.disabled = button_states[child.custom_id]
-            if child.custom_id == "page_number":
-                child.label = f"{self.pagination.current_page:02}/{self.pagination.total_pages:02}"
+            if (state := button_states.get(child.custom_id)):
+                child.disabled = state.get("disabled", False)
+                child.label = state.get("label")
     
     async def on_error(self, error: Exception, item: discord.ui.Item, interaction: discord.Interaction) -> None:
-        traceback.print_exception(error)
+        return
     
     async def update_message(self, interaction: discord.Interaction) -> None:
         """Update the view and edit the message."""
@@ -70,14 +94,15 @@ class PaginationView(discord.ui.View):
     @discord.ui.button(label="--/--", custom_id="page_number", style=discord.ButtonStyle.blurple)
     async def page_number(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
         """Display current page number."""
+        texts = LangHandler._get_lang(self.lang, "pagination.page.title", "pagination.page.field")
         modal = BaseModal(
-            title="Page Number",
+            title=texts[0],
             custom_id="page_number_modal",
             items=[
                 discord.ui.TextInput(
-                    label="Page Number",
+                    label=texts[1],
                     custom_id="page_number",
-                    placeholder="Enter the page number to navigate.",
+                    placeholder="e.g. 1",
                     default=str(self.pagination.current_page),
                     max_length=5,
                     required=True

@@ -62,10 +62,10 @@ class Settings(commands.Cog, name="settings"):
     async def prefix(self, ctx: commands.Context, prefix: str):
         "Change the default prefix for message commands."
         if not self.bot.intents.message_content:
-            return await send_localized_message(ctx, "missingIntents", "MESSAGE_CONTENT", ephemeral=True)
+            return await send_localized_message(ctx, "common.error.missingIntents", "MESSAGE_CONTENT", ephemeral=True)
         
         await MongoDBHandler.update_settings(ctx.guild.id, {"$set": {"prefix": prefix}})
-        await send_localized_message(ctx, "setPrefix", prefix, prefix)
+        await send_localized_message(ctx, "settings.actions.prefixSet", prefix, prefix)
 
     @settings.command(name="language", aliases=get_aliases("language"))
     @commands.has_permissions(manage_guild=True)
@@ -74,10 +74,10 @@ class Settings(commands.Cog, name="settings"):
         "You can choose your preferred language, the bot message will change to the language you set."
         language = language.upper()
         if language not in voicelink.LangHandler.get_all_languages():
-            return await send_localized_message(ctx, "languageNotFound")
+            return await send_localized_message(ctx, "settings.actions.languageNotFound")
 
         await MongoDBHandler.update_settings(ctx.guild.id, {"$set": {'lang': language}})
-        await send_localized_message(ctx, 'changedLanguage', language)
+        await send_localized_message(ctx, 'settings.actions.languageChanged', language)
 
     @language.autocomplete('language')
     async def autocomplete_callback(self, interaction: discord.Interaction, current: str) -> list:
@@ -91,7 +91,7 @@ class Settings(commands.Cog, name="settings"):
     async def dj(self, ctx: commands.Context, role: discord.Role = None):
         "Set a DJ role or remove DJ role."
         await MongoDBHandler.update_settings(ctx.guild.id, {"$set": {'dj': role.id}} if role else {"$unset": {'dj': None}})
-        await send_localized_message(ctx, 'setDJ', f"<@&{role.id}>" if role else "None")
+        await send_localized_message(ctx, 'settings.actions.djSet', f"<@&{role.id}>" if role else "None")
 
     @settings.command(name="queue", aliases=get_aliases("queue"))
     @app_commands.choices(mode=[
@@ -104,7 +104,7 @@ class Settings(commands.Cog, name="settings"):
         "Change to another type of queue mode."
         mode = mode if mode.lower() in voicelink.queue.QUEUE_TYPES else next(iter(voicelink.queue.QUEUE_TYPES))
         await MongoDBHandler.update_settings(ctx.guild.id, {"$set": {"queue_type": mode}})
-        await send_localized_message(ctx, "setQueue", mode.capitalize())
+        await send_localized_message(ctx, "settings.actions.queueModeSet", mode.capitalize())
 
     @settings.command(name="247", aliases=get_aliases("247"))
     @commands.has_permissions(manage_guild=True)
@@ -114,7 +114,7 @@ class Settings(commands.Cog, name="settings"):
         settings = await MongoDBHandler.get_settings(ctx.guild.id)
         toggle = settings.get('24/7', False)
         await MongoDBHandler.update_settings(ctx.guild.id, {"$set": {'24/7': not toggle}})
-        await send_localized_message(ctx, '247', await LangHandler.get_lang(ctx.guild.id, "enabled" if not toggle else "disabled"))
+        await send_localized_message(ctx, 'settings.actions.mode247', await LangHandler.get_lang(ctx.guild.id, "common.status.enabled" if not toggle else "common.status.disabled"))
 
     @settings.command(name="bypassvote", aliases=get_aliases("bypassvote"))
     @commands.has_permissions(manage_guild=True)
@@ -122,9 +122,9 @@ class Settings(commands.Cog, name="settings"):
     async def bypassvote(self, ctx: commands.Context):
         "Toggles voting system."
         settings = await MongoDBHandler.get_settings(ctx.guild.id)
-        toggle = settings.get('disabled_vote', True)
-        await MongoDBHandler.update_settings(ctx.guild.id, {"$set": {'disabled_vote': not toggle}})
-        await send_localized_message(ctx, 'bypassVote', await LangHandler.get_lang(ctx.guild.id, "enabled" if not toggle else "disabled"))
+        toggle = settings.get('common.status.disabled_vote', True)
+        await MongoDBHandler.update_settings(ctx.guild.id, {"$set": {'common.status.disabled_vote': not toggle}})
+        await send_localized_message(ctx, 'settings.actions.bypassVote', await LangHandler.get_lang(ctx.guild.id, "common.status.enabled" if not toggle else "common.status.disabled"))
 
     @settings.command(name="view", aliases=get_aliases("view"))
     @commands.has_permissions(manage_guild=True)
@@ -133,7 +133,7 @@ class Settings(commands.Cog, name="settings"):
         "Show all the bot settings in your server."
         settings = await MongoDBHandler.get_settings(ctx.guild.id)
 
-        texts = await LangHandler.get_lang(ctx.guild.id, "settingsMenu", "settingsTitle", "settingsValue", "settingsTitle2", "settingsValue2", "settingsTitle3", "settingsPermTitle", "settingsPermValue")
+        texts = await LangHandler.get_lang(ctx.guild.id, "settings.menu", "settings.basic.title", "settings.basic.value", "settings.queue.title", "settings.queue.value", "settings.voice.title", "settings.permissions.title", "settings.permissions.value")
         embed = discord.Embed(color=voicelink.Config().embed_color)
         embed.set_author(name=texts[0].format(ctx.guild.name), icon_url=self.bot.user.display_avatar.url)
         if ctx.guild.icon:
@@ -145,7 +145,7 @@ class Settings(commands.Cog, name="settings"):
             settings.get('lang', 'EN'),
             settings.get('controller', True),
             dj_role.name if dj_role else 'None',
-            settings.get('disabled_vote', False),
+            settings.get('common.status.disabled_vote', False),
             settings.get('24/7', False),
             settings.get('volume', 100),
             format_ms(settings.get('played_time', 0) * 60 * 1000),
@@ -182,7 +182,7 @@ class Settings(commands.Cog, name="settings"):
             await player.set_volume(value, ctx.author)
 
         await MongoDBHandler.update_settings(ctx.guild.id, {"$set": {'volume': value}})
-        await send_localized_message(ctx, 'setVolume', value)
+        await send_localized_message(ctx, 'settings.actions.volumeSet', value)
 
     @settings.command(name="togglecontroller", aliases=get_aliases("togglecontroller"))
     @commands.has_permissions(manage_guild=True)
@@ -200,7 +200,7 @@ class Settings(commands.Cog, name="settings"):
                 discord.ui.View.from_message(player.controller).stop()
 
         await MongoDBHandler.update_settings(ctx.guild.id, {"$set": {'controller': toggle}})
-        await send_localized_message(ctx, 'toggleController', await LangHandler.get_lang(ctx.guild.id, "enabled" if toggle else "disabled"))
+        await send_localized_message(ctx, 'settings.actions.controllerToggled', await LangHandler.get_lang(ctx.guild.id, "common.status.enabled" if toggle else "common.status.disabled"))
 
     @settings.command(name="duplicatetrack", aliases=get_aliases("duplicatetrack"))
     @commands.has_permissions(manage_guild=True)
@@ -214,7 +214,7 @@ class Settings(commands.Cog, name="settings"):
             player.queue._allow_duplicate = toggle
 
         await MongoDBHandler.update_settings(ctx.guild.id, {"$set": {'duplicate_track': toggle}})
-        return await send_localized_message(ctx, "toggleDuplicateTrack", await LangHandler.get_lang(ctx.guild.id, "disabled" if toggle else "enabled"))
+        return await send_localized_message(ctx, "settings.actions.duplicateTrackToggled", await LangHandler.get_lang(ctx.guild.id, "common.status.disabled" if toggle else "common.status.enabled"))
     
     @settings.command(name="customcontroller", aliases=get_aliases("customcontroller"))
     @commands.has_permissions(manage_guild=True)
@@ -237,7 +237,7 @@ class Settings(commands.Cog, name="settings"):
         toggle = not settings.get('controller_msg', True)
 
         await MongoDBHandler.update_settings(ctx.guild.id, {"$set": {'controller_msg': toggle}})
-        await send_localized_message(ctx, 'toggleControllerMsg', await LangHandler.get_lang(ctx.guild.id, "enabled" if toggle else "disabled"))
+        await send_localized_message(ctx, 'settings.actions.controllerMsgToggled', await LangHandler.get_lang(ctx.guild.id, "common.status.enabled" if toggle else "common.status.disabled"))
     
     @settings.command(name="silentmsg", aliases=get_aliases("silentmsg"))
     @commands.has_permissions(manage_guild=True)
@@ -248,7 +248,7 @@ class Settings(commands.Cog, name="settings"):
         toggle = not settings.get('silent_msg', False)
 
         await MongoDBHandler.update_settings(ctx.guild.id, {"$set": {'silent_msg': toggle}})
-        await send_localized_message(ctx, 'toggleSilentMsg', await LangHandler.get_lang(ctx.guild.id, "enabled" if toggle else "disabled"))
+        await send_localized_message(ctx, 'settings.actions.silentMsgToggled', await LangHandler.get_lang(ctx.guild.id, "common.status.enabled" if toggle else "common.status.disabled"))
 
     @settings.command(name="stageannounce", aliases=get_aliases("stageannounce"))
     @commands.has_permissions(manage_guild=True)
@@ -256,7 +256,7 @@ class Settings(commands.Cog, name="settings"):
     async def stageannounce(self, ctx: commands.Context, template: str = None):
         "Customize the channel topic template"
         await MongoDBHandler.update_settings(ctx.guild.id, {"$set": {'stage_announce_template': template}})
-        await send_localized_message(ctx, "setStageAnnounceTemplate")
+        await send_localized_message(ctx, "voice.stageChannel.setAnnounceTemplate")
 
     @settings.command(name="setupchannel", aliases=get_aliases("setupchannel"))
     @app_commands.describe(
@@ -267,7 +267,7 @@ class Settings(commands.Cog, name="settings"):
     async def setupchannel(self, ctx: commands.Context, channel: discord.TextChannel = None) -> None:
         "Sets up a dedicated channel for song requests in your server."
         if not self.bot.intents.message_content:
-            return await send_localized_message(ctx, "missingIntents", "MESSAGE_CONTENT", ephemeral=True)
+            return await send_localized_message(ctx, "common.error.missingIntents", "MESSAGE_CONTENT", ephemeral=True)
         
         if not channel:
             try:
@@ -279,11 +279,11 @@ class Settings(commands.Cog, name="settings"):
                 }
                 channel = await ctx.guild.create_text_channel("vocard-song-requests", overwrites=overwrites)
             except:
-                return await send_localized_message(ctx, "noCreatePermission")
+                return await send_localized_message(ctx, "permissions.noCreatePermission")
 
         channel_perms = channel.permissions_for(ctx.me)
         if not channel_perms.text() and not channel_perms.manage_messages:
-            return await send_localized_message(ctx, "noCreatePermission")
+            return await send_localized_message(ctx, "permissions.noCreatePermission")
         
         settings = await MongoDBHandler.get_settings(ctx.guild.id)
         controller = settings.get("default_controller", voicelink.Config().controller).get("embeds", {}).get("inactive", {})        
@@ -293,7 +293,7 @@ class Settings(commands.Cog, name="settings"):
             "text_channel_id": channel.id,
             "controller_msg_id": message.id,
         }}})
-        await send_localized_message(ctx, "createSongRequestChannel", channel.mention)
+        await send_localized_message(ctx, "songRequest.channelCreated", channel.mention)
 
     @app_commands.command(name="debug")
     async def debug(self, interaction: discord.Interaction):

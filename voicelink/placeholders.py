@@ -100,7 +100,7 @@ class PlayerPlaceholder:
 
     @ensure_track
     def track_duration(self, track: Track) -> str:
-        return self.player.get_msg("live") if track.is_stream else format_ms(track.length)
+        return self.player.get_msg("common.status.live") if track.is_stream else format_ms(track.length)
     
     @ensure_track
     def track_requester_id(self, track: Track) -> str:

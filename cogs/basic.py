@@ -42,9 +42,9 @@ from voicelink.utils import format_ms, format_to_ms, truncate_string, dispatch_m
 async def nowplay(ctx: commands.Context, player: voicelink.Player):
     track = player.current
     if not track:
-        return await send_localized_message(ctx, 'noTrackPlaying', ephemeral=True)
+        return await send_localized_message(ctx, 'player.errors.noTrackPlaying', ephemeral=True)
 
-    texts = await LangHandler.get_lang(ctx.guild.id, "nowplayingDesc", "nowplayingField", "nowplayingLink")
+    texts = await LangHandler.get_lang(ctx.guild.id, "player.playback.nowplayingDesc", "player.playback.nowplayingField", "player.playback.nowplayingLink")
     upnext = "\n".join(f"`{index}.` `[{track.formatted_length}]` [{truncate_string(track.title)}]({track.uri})" for index, track in enumerate(player.queue.tracks()[:2], start=2))
     
     embed = discord.Embed(description=texts[0].format(track.title), color=Config().embed_color)
@@ -108,9 +108,9 @@ class Basic(commands.Cog):
         try:
             player = await voicelink.connect_channel(ctx, channel)
         except discord.errors.ClientException:
-            return await send_localized_message(ctx, "alreadyConnected")
+            return await send_localized_message(ctx, "voice.connection.alreadyConnected")
 
-        await send_localized_message(ctx, 'connect', player.channel)
+        await send_localized_message(ctx, "voice.connection.connect", player.channel)
                 
     @commands.hybrid_command(name="play", aliases=get_aliases("play"))
     @app_commands.describe(
@@ -127,22 +127,22 @@ class Basic(commands.Cog):
             player = await voicelink.connect_channel(ctx)
 
         if not player.is_user_join(ctx.author):
-            return await send_localized_message(ctx, "notInChannel", ctx.author.mention, player.channel.mention, ephemeral=True)
+            return await send_localized_message(ctx, "voice.connection.notInChannel", ctx.author.mention, player.channel.mention, ephemeral=True)
 
         if ctx.interaction:
             await ctx.interaction.response.defer()
 
         tracks = await player.get_tracks(query, requester=ctx.author)
         if not tracks:
-            return await send_localized_message(ctx, "noTrackFound")
+            return await send_localized_message(ctx, "player.errors.noTrackFound")
 
         try:
             if isinstance(tracks, voicelink.Playlist):
                 index = await player.add_track(tracks.tracks, start_time=format_to_ms(start), end_time=format_to_ms(end))
-                await send_localized_message(ctx, "playlistLoad", tracks.name, index)
+                await send_localized_message(ctx, "player.playback.playlistLoad", tracks.name, index)
             else:
                 position = await player.add_track(tracks[0], start_time=format_to_ms(start), end_time=format_to_ms(end))
-                texts = await LangHandler.get_lang(ctx.guild.id, "live", "trackLoad_pos", "trackLoad")
+                texts = await LangHandler.get_lang(ctx.guild.id, "common.status.live", "player.playback.trackLoadPos", "player.playback.trackLoad")
                 stream_content = f"`{texts[0]}`" if tracks[0].is_stream else ""
                 additional_content = texts[1] if position >= 1 and player.is_playing else texts[2]
 
@@ -169,27 +169,27 @@ class Basic(commands.Cog):
             query = message.attachments[0].url
 
         if not query:
-            return await send_localized_message(interaction, "noPlaySource", ephemeral=True)
+            return await send_localized_message(interaction, "player.errors.noPlaySource", ephemeral=True)
 
         player: voicelink.Player = interaction.guild.voice_client
         if not player:
             player = await voicelink.connect_channel(interaction)
 
         if not player.is_user_join(interaction.user):
-            return await send_localized_message(interaction, "notInChannel", interaction.user.mention, player.channel.mention, ephemeral=True)
+            return await send_localized_message(interaction, "voice.connection.notInChannel", interaction.user.mention, player.channel.mention, ephemeral=True)
 
         await interaction.response.defer()
         tracks = await player.get_tracks(query, requester=interaction.user)
         if not tracks:
-            return await send_localized_message(interaction, "noTrackFound")
+            return await send_localized_message(interaction, "player.errors.noTrackFound")
 
         try:
             if isinstance(tracks, voicelink.Playlist):
                 index = await player.add_track(tracks.tracks)
-                await send_localized_message(interaction, "playlistLoad", tracks.name, index)
+                await send_localized_message(interaction, "player.playback.playlistLoad", tracks.name, index)
             else:
                 position = await player.add_track(tracks[0])
-                texts = await LangHandler.get_lang(interaction.guild.id, "live", "trackLoad_pos", "trackLoad")
+                texts = await LangHandler.get_lang(interaction.guild.id, "common.status.live", "player.playback.trackLoadPos", "player.playback.trackLoad")
 
                 stream_content = f"`{texts[0]}`" if tracks[0].is_stream else ""
                 additional_content = texts[1] if position >= 1 and player.is_playing else texts[2]
@@ -221,17 +221,17 @@ class Basic(commands.Cog):
             player = await voicelink.connect_channel(ctx)
 
         if not player.is_user_join(ctx.author):
-            return await send_localized_message(ctx, "notInChannel", ctx.author.mention, player.channel.mention, ephemeral=True)
+            return await send_localized_message(ctx, "voice.connection.notInChannel", ctx.author.mention, player.channel.mention, ephemeral=True)
 
         if url(query):
-            return await send_localized_message(ctx, "noLinkSupport", ephemeral=True)
+            return await send_localized_message(ctx, "search.noLinkSupport", ephemeral=True)
         
         search_type: voicelink.SearchType = voicelink.SearchType.match(platform) or Config().search_platform
         tracks = await player.get_tracks(query=query, requester=ctx.author, search_type=search_type)
         if not tracks:
-            return await send_localized_message(ctx, "noTrackFound")
+            return await send_localized_message(ctx, "player.errors.noTrackFound")
 
-        texts = await LangHandler.get_lang(ctx.guild.id, "searchTitle", "searchDesc", "live", "trackLoad_pos", "trackLoad", "searchWait", "searchSuccess")
+        texts = await LangHandler.get_lang(ctx.guild.id, "search.title", "search.desc", "common.status.live", "player.playback.trackLoadPos", "player.playback.trackLoad", "search.wait", "search.success")
         query_track = "\n".join(f"`{index}.` `[{track.formatted_length}]` **{track.title[:35]}**" for index, track in enumerate(tracks[0:10], start=1))
         embed = discord.Embed(title=texts[0].format(query), description=texts[1].format(Config().get_source_config(search_type.display_name, "emoji"), search_type.display_name, len(tracks[0:10]), query_track), color=Config().embed_color)
         view = SearchView(tracks=tracks[0:10], texts=[texts[5], texts[6]])
@@ -264,22 +264,22 @@ class Basic(commands.Cog):
             player = await voicelink.connect_channel(ctx)
 
         if not player.is_user_join(ctx.author):
-            return await send_localized_message(ctx, "notInChannel", ctx.author.mention, player.channel.mention, ephemeral=True)
+            return await send_localized_message(ctx, "voice.connection.notInChannel", ctx.author.mention, player.channel.mention, ephemeral=True)
         
         if ctx.interaction:
             await ctx.interaction.response.defer()
 
         tracks = await player.get_tracks(query, requester=ctx.author)
         if not tracks:
-            return await send_localized_message(ctx, "noTrackFound")
+            return await send_localized_message(ctx, "player.errors.noTrackFound")
         
         try:
             if isinstance(tracks, voicelink.Playlist):
                 index = await player.add_track(tracks.tracks, start_time=format_to_ms(start), end_time=format_to_ms(end), at_front=True)
-                await send_localized_message(ctx, "playlistLoad", tracks.name, index)
+                await send_localized_message(ctx, "player.playback.playlistLoad", tracks.name, index)
             else:
                 position = await player.add_track(tracks[0], start_time=format_to_ms(start), end_time=format_to_ms(end), at_front=True)
-                texts = await LangHandler.get_lang(ctx.guild.id, "live", "trackLoad_pos", "trackLoad")
+                texts = await LangHandler.get_lang(ctx.guild.id, "common.status.live", "player.playback.trackLoadPos", "player.playback.trackLoad")
 
                 stream_content = f"`{texts[0]}`" if tracks[0].is_stream else ""
                 additional_content = texts[1] if position >= 1 and player.is_playing else texts[2]
@@ -308,21 +308,21 @@ class Basic(commands.Cog):
             player = await voicelink.connect_channel(ctx)
 
         if not player.is_privileged(ctx.author):
-            return await send_localized_message(ctx, "missingFunctionPerm", ephemeral=True)
+            return await send_localized_message(ctx, "permissions.missingFunction", ephemeral=True)
         
         if ctx.interaction:
             await ctx.interaction.response.defer()
             
         tracks = await player.get_tracks(query, requester=ctx.author)
         if not tracks:
-            return await send_localized_message(ctx, "noTrackFound")
+            return await send_localized_message(ctx, "player.errors.noTrackFound")
         
         try:
             if isinstance(tracks, voicelink.Playlist):
                 index = await player.add_track(tracks.tracks, start_time=format_to_ms(start), end_time=format_to_ms(end), at_front=True)
-                await send_localized_message(ctx, "playlistLoad", tracks.name, index)
+                await send_localized_message(ctx, "player.playback.playlistLoad", tracks.name, index)
             else:
-                texts = await LangHandler.get_lang(ctx.guild.id, "live", "trackLoad")
+                texts = await LangHandler.get_lang(ctx.guild.id, "common.status.live", "player.playback.trackLoad")
                 await player.add_track(tracks[0], start_time=format_to_ms(start), end_time=format_to_ms(end), at_front=True)
 
                 stream_content = f"`{texts[0]}`" if tracks[0].is_stream else ""
@@ -344,21 +344,21 @@ class Basic(commands.Cog):
         "Pause the music."
         player: voicelink.Player = ctx.guild.voice_client
         if not player:
-            return await send_localized_message(ctx, "noPlayer", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noPlayer", ephemeral=True)
 
         if player.is_paused:
-            return await send_localized_message(ctx, "pauseError", ephemeral=True)
+            return await send_localized_message(ctx, "player.controls.pause.error", ephemeral=True)
 
         if not player.is_privileged(ctx.author):
             if ctx.author in player.pause_votes:
-                return await send_localized_message(ctx, "voted", ephemeral=True)
+                return await send_localized_message(ctx, "voting.voted", ephemeral=True)
             
             player.pause_votes.add(ctx.author)
             if len(player.pause_votes) < (required := player.required()):
-                return await send_localized_message(ctx, "pauseVote", ctx.author, len(player.pause_votes), required)
+                return await send_localized_message(ctx, "player.controls.pause.vote", ctx.author, len(player.pause_votes), required)
 
         await player.set_pause(True, ctx.author)
-        await send_localized_message(ctx, "paused", ctx.author)
+        await send_localized_message(ctx, player.controls.pause.success, ctx.author)
 
     @commands.hybrid_command(name="resume", aliases=get_aliases("resume"))
     @commands.dynamic_cooldown(cooldown_check, commands.BucketType.guild)
@@ -366,21 +366,21 @@ class Basic(commands.Cog):
         "Resume the music."
         player: voicelink.Player = ctx.guild.voice_client
         if not player:
-            return await send_localized_message(ctx, "noPlayer", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noPlayer", ephemeral=True)
 
         if not player.is_paused:
-            return await send_localized_message(ctx, "resumeError")
+            return await send_localized_message(ctx, "player.controls.resume.error")
 
         if not player.is_privileged(ctx.author):
             if ctx.author in player.resume_votes:
-                return await send_localized_message(ctx, "voted", ephemeral=True)
+                return await send_localized_message(ctx, "voting.voted", ephemeral=True)
             
             player.resume_votes.add(ctx.author)
             if len(player.resume_votes) < (required := player.required()):
-                return await send_localized_message(ctx, "resumeVote", ctx.author, len(player.resume_votes), required)
+                return await send_localized_message(ctx, "player.controls.resume.vote", ctx.author, len(player.resume_votes), required)
 
         await player.set_pause(False, ctx.author)
-        await send_localized_message(ctx, "resumed", ctx.author)
+        await send_localized_message(ctx, "player.controls.resume.success", ctx.author)
 
     @commands.hybrid_command(name="skip", aliases=get_aliases("skip"))
     @app_commands.describe(index="Enter a index that you want to skip to.")
@@ -389,28 +389,28 @@ class Basic(commands.Cog):
         "Skips to the next song or skips to the specified song."
         player: voicelink.Player = ctx.guild.voice_client
         if not player:
-            return await send_localized_message(ctx, "noPlayer", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noPlayer", ephemeral=True)
 
         if not player.node._available:
-            return await send_localized_message(ctx, "nodeReconnect")
+            return await send_localized_message(ctx, "player.errors.nodeReconnect")
         
         if not player.is_playing:
-            return await send_localized_message(ctx, "skipError", ephemeral=True)
+            return await send_localized_message(ctx, "player.controls.skip.error", ephemeral=True)
 
         if not player.is_privileged(ctx.author):
             if ctx.author == player.current.requester:
                 pass
             elif ctx.author in player.skip_votes:
-                return await send_localized_message(ctx, "voted", ephemeral=True)
+                return await send_localized_message(ctx, "voting.voted", ephemeral=True)
             else:
                 player.skip_votes.add(ctx.author)
                 if len(player.skip_votes) < (required := player.required()):
-                    return await send_localized_message(ctx, "skipVote", ctx.author, len(player.skip_votes), required)
+                    return await send_localized_message(ctx, "player.controls.skip.vote", ctx.author, len(player.skip_votes), required)
 
         if index:
             player.queue.skipto(index)
 
-        await send_localized_message(ctx, "skipped", ctx.author)
+        await send_localized_message(ctx, "player.controls.skip.success", ctx.author)
         if player.queue._repeat.mode == voicelink.LoopType.TRACK:
             await player.set_repeat(voicelink.LoopType.OFF)
             
@@ -423,18 +423,18 @@ class Basic(commands.Cog):
         "Skips back to the previous song or skips to the specified previous song."
         player: voicelink.Player = ctx.guild.voice_client
         if not player:
-            return await send_localized_message(ctx, "noPlayer", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noPlayer", ephemeral=True)
 
         if not player.node._available:
-            return await send_localized_message(ctx, "nodeReconnectode")
+            return await send_localized_message(ctx, "player.errors.nodeReconnectode")
         
         if not player.is_privileged(ctx.author):
             if ctx.author in player.previous_votes:
-                return await send_localized_message(ctx, "voted", ephemeral=True)
+                return await send_localized_message(ctx, "voting.voted", ephemeral=True)
             
             player.previous_votes.add(ctx.author)
             if len(player.previous_votes) < (required := player.required()):
-                return await send_localized_message(ctx, "backVote", ctx.author, len(player.previous_votes), required)
+                return await send_localized_message(ctx, "player.controls.back.vote", ctx.author, len(player.previous_votes), required)
 
         if not player.is_playing:
             player.queue.backto(index)
@@ -443,7 +443,7 @@ class Basic(commands.Cog):
             player.queue.backto(index + 1)
             await player.stop()
 
-        await send_localized_message(ctx, "backed", ctx.author)
+        await send_localized_message(ctx, "player.controls.back.success", ctx.author)
         if player.queue._repeat.mode == voicelink.LoopType.TRACK:
             await player.set_repeat(voicelink.LoopType.OFF)
 
@@ -454,19 +454,19 @@ class Basic(commands.Cog):
         "Change the player position."
         player: voicelink.Player = ctx.guild.voice_client
         if not player:
-            return await send_localized_message(ctx, "noPlayer", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noPlayer", ephemeral=True)
 
         if not player.is_privileged(ctx.author):
-            return await send_localized_message(ctx, "missingPosPerm", ephemeral=True)
+            return await send_localized_message(ctx, "permissions.missingPosition", ephemeral=True)
 
         if not player.current or player.position == 0:
-            return await send_localized_message(ctx, "noTrackPlaying", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noTrackPlaying", ephemeral=True)
 
         if not (num := format_to_ms(position)):
-            return await send_localized_message(ctx, "timeFormatError", ephemeral=True)
+            return await send_localized_message(ctx, "time.formatError", ephemeral=True)
 
         await player.seek(num, ctx.author)
-        await send_localized_message(ctx, "seek", position)
+        await send_localized_message(ctx, "player.controls.seek", position)
 
     @commands.hybrid_group(
         name="queue", 
@@ -479,10 +479,10 @@ class Basic(commands.Cog):
         "Display the players queue songs in your queue."
         player: voicelink.Player = ctx.guild.voice_client
         if not player:
-            return await send_localized_message(ctx, "noPlayer", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noPlayer", ephemeral=True)
 
         if not player.is_user_join(ctx.author):
-            return await send_localized_message(ctx, "notInChannel", ctx.author.mention, player.channel.mention, ephemeral=True)
+            return await send_localized_message(ctx, "voice.connection.notInChannel", ctx.author.mention, player.channel.mention, ephemeral=True)
 
         if player.queue.is_empty:
             return await nowplay(ctx, player)
@@ -495,13 +495,13 @@ class Basic(commands.Cog):
         "Exports the entire queue to a text file"
         player: voicelink.Player = ctx.guild.voice_client
         if not player:
-            return await send_localized_message(ctx, "noPlayer", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noPlayer", ephemeral=True)
         
         if not player.is_user_join(ctx.author):
-            return await send_localized_message(ctx, "notInChannel", ctx.author.mention, player.channel.mention, ephemeral=True)
+            return await send_localized_message(ctx, "voice.connection.notInChannel", ctx.author.mention, player.channel.mention, ephemeral=True)
         
         if player.queue.is_empty and not player.current:
-            return await send_localized_message(ctx, "noTrackPlaying", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noTrackPlaying", ephemeral=True)
 
         await ctx.defer()
 
@@ -535,7 +535,7 @@ class Basic(commands.Cog):
             player = await voicelink.connect_channel(ctx)
 
         if not player.is_user_join(ctx.author):
-            return await send_localized_message(ctx, "notInChannel", ctx.author.mention, player.channel.mention, ephemeral=True)
+            return await send_localized_message(ctx, "voice.connection.notInChannel", ctx.author.mention, player.channel.mention, ephemeral=True)
 
         try:
             bytes = await attachment.read()
@@ -544,10 +544,10 @@ class Basic(commands.Cog):
             
             tracks = [voicelink.Track(track_id=track_id, info=voicelink.Track.decode(track_id), requester=ctx.author) for track_id in track_ids]
             if not tracks:
-                return await send_localized_message(ctx, "noTrackFound")
+                return await send_localized_message(ctx, "player.errors.noTrackFound")
 
             index = await player.add_track(tracks)
-            await send_localized_message(ctx, "playlistLoad", attachment.filename, index)
+            await send_localized_message(ctx, "player.playback.playlistLoad", attachment.filename, index)
         except Exception as e:
             logger.error("error", exc_info=e)
             raise e
@@ -562,10 +562,10 @@ class Basic(commands.Cog):
         "Display the players queue songs in your history queue."
         player: voicelink.Player = ctx.guild.voice_client
         if not player:
-            return await send_localized_message(ctx, "noPlayer", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noPlayer", ephemeral=True)
 
         if not player.is_user_join(ctx.author):
-            return await send_localized_message(ctx, "notInChannel", ctx.author.mention, player.channel.mention, ephemeral=True)
+            return await send_localized_message(ctx, "voice.connection.notInChannel", ctx.author.mention, player.channel.mention, ephemeral=True)
 
         if not player.queue.history():
             return await nowplay(ctx, player)
@@ -579,19 +579,19 @@ class Basic(commands.Cog):
         "Disconnects the bot from your voice channel and chears the queue."
         player: voicelink.Player = ctx.guild.voice_client
         if not player:
-            return await send_localized_message(ctx, "noPlayer", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noPlayer", ephemeral=True)
 
         if not player.is_privileged(ctx.author):
             if ctx.author in player.stop_votes:
-                return await send_localized_message(ctx, "voted", ephemeral=True)
+                return await send_localized_message(ctx, "voting.voted", ephemeral=True)
             else:
                 player.stop_votes.add(ctx.author)
                 if len(player.stop_votes) >= (required := player.required(leave=True)):
                     pass
                 else:
-                    return await send_localized_message(ctx, "leaveVote", ctx.author, len(player.stop_votes), required)
+                    return await send_localized_message(ctx, "player.controls.leave.vote", ctx.author, len(player.stop_votes), required)
 
-        await send_localized_message(ctx, "left", ctx.author)
+        await send_localized_message(ctx, "player.controls.leave.success", ctx.author)
         await player.teardown()
 
     @commands.hybrid_command(name="nowplaying", aliases=get_aliases("nowplaying"))
@@ -600,10 +600,10 @@ class Basic(commands.Cog):
         "Shows details of the current track."
         player: voicelink.Player = ctx.guild.voice_client
         if not player:
-            return await send_localized_message(ctx, "noPlayer", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noPlayer", ephemeral=True)
 
         if not player.is_user_join(ctx.author):
-            return await send_localized_message(ctx, "notInChannel", ctx.author.mention, player.channel.mention, ephemeral=True)
+            return await send_localized_message(ctx, "voice.connection.notInChannel", ctx.author.mention, player.channel.mention, ephemeral=True)
 
         await nowplay(ctx, player)
 
@@ -618,13 +618,13 @@ class Basic(commands.Cog):
         "Changes Loop mode."
         player: voicelink.Player = ctx.guild.voice_client
         if not player:
-            return await send_localized_message(ctx, "noPlayer", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noPlayer", ephemeral=True)
 
         if not player.is_privileged(ctx.author):
-            return await send_localized_message(ctx, "missingModePerm", ephemeral=True)
+            return await send_localized_message(ctx, "permissions.missingMode", ephemeral=True)
 
         await player.set_repeat(voicelink.LoopType[mode] if mode in voicelink.LoopType.__members__ else voicelink.LoopType.OFF, ctx.author)
-        await send_localized_message(ctx, "repeat", mode.capitalize())
+        await send_localized_message(ctx, "player.controls.repeat", mode.capitalize())
 
     @commands.hybrid_command(name="clear", aliases=get_aliases("clear"))
     @app_commands.describe(queue="Choose a queue that you want to clear.")
@@ -637,13 +637,13 @@ class Basic(commands.Cog):
         "Remove all the tracks in your queue or history queue."
         player: voicelink.Player = ctx.guild.voice_client
         if not player:
-            return await send_localized_message(ctx, "noPlayer", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noPlayer", ephemeral=True)
 
         if not player.is_privileged(ctx.author):
-            return await send_localized_message(ctx, "missingQueuePerm", ephemeral=True)
+            return await send_localized_message(ctx, "permissions.missingQueue", ephemeral=True)
 
         await player.clear_queue(queue, ctx.author)
-        await send_localized_message(ctx, "cleared", queue.capitalize())
+        await send_localized_message(ctx, "queue.management.cleared", queue.capitalize())
 
     @commands.hybrid_command(name="remove", aliases=get_aliases("remove"))
     @app_commands.describe(
@@ -656,13 +656,13 @@ class Basic(commands.Cog):
         "Removes specified track or a range of tracks from the queue."
         player: voicelink.Player = ctx.guild.voice_client
         if not player:
-            return await send_localized_message(ctx, "noPlayer", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noPlayer", ephemeral=True)
 
         if not player.is_privileged(ctx.author):
-            return await send_localized_message(ctx, "missingQueuePerm", ephemeral=True)
+            return await send_localized_message(ctx, "permissions.missingQueue", ephemeral=True)
 
         removed_tracks = await player.remove_track(position1, position2, remove_target=member, requester=ctx.author)
-        await send_localized_message(ctx, "removed", len(removed_tracks.keys()))
+        await send_localized_message(ctx, "queue.management.removed", len(removed_tracks.keys()))
 
     @commands.hybrid_command(name="forward", aliases=get_aliases("forward"))
     @app_commands.describe(position="Input an amount that you to forward to. Exmaple: 1:20")
@@ -671,19 +671,19 @@ class Basic(commands.Cog):
         "Forwards by a certain amount of time in the current track. The default is 10 seconds."
         player: voicelink.Player = ctx.guild.voice_client
         if not player:
-            return await send_localized_message(ctx, "noPlayer", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noPlayer", ephemeral=True)
 
         if not player.is_privileged(ctx.author):
-            return await send_localized_message(ctx, "missingPosPerm", ephemeral=True)
+            return await send_localized_message(ctx, "permissions.missingPosition", ephemeral=True)
 
         if not player.current:
-            return await send_localized_message(ctx, "noTrackPlaying", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noTrackPlaying", ephemeral=True)
 
         if not (num := format_to_ms(position)):
-            return await send_localized_message(ctx, "timeFormatError", ephemeral=True)
+            return await send_localized_message(ctx, "time.formatError", ephemeral=True)
 
         await player.seek(int(player.position + num))
-        await send_localized_message(ctx, "forward", format_ms(player.position + num))
+        await send_localized_message(ctx, "player.controls.forward", format_ms(player.position + num))
 
     @commands.hybrid_command(name="rewind", aliases=get_aliases("rewind"))
     @app_commands.describe(position="Input an amount that you to rewind to. Exmaple: 1:20")
@@ -692,19 +692,19 @@ class Basic(commands.Cog):
         "Rewind by a certain amount of time in the current track. The default is 10 seconds."
         player: voicelink.Player = ctx.guild.voice_client
         if not player:
-            return await send_localized_message(ctx, "noPlayer", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noPlayer", ephemeral=True)
 
         if not player.is_privileged(ctx.author):
-            return await send_localized_message(ctx, "missingPosPerm", ephemeral=True)
+            return await send_localized_message(ctx, "permissions.missingPosition", ephemeral=True)
 
         if not player.current:
-            return await send_localized_message(ctx, "noTrackPlaying", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noTrackPlaying", ephemeral=True)
         
         if not (num := format_to_ms(position)):
-            return await send_localized_message(ctx, "timeFormatError", ephemeral=True)
+            return await send_localized_message(ctx, "time.formatError", ephemeral=True)
 
         await player.seek(int(player.position - num))
-        await send_localized_message(ctx, "rewind", format_ms(player.position - num))
+        await send_localized_message(ctx, "player.controls.rewind", format_ms(player.position - num))
 
     @commands.hybrid_command(name="replay", aliases=get_aliases("replay"))
     @commands.dynamic_cooldown(cooldown_check, commands.BucketType.guild)
@@ -712,16 +712,16 @@ class Basic(commands.Cog):
         "Reset the progress of the current song."
         player: voicelink.Player = ctx.guild.voice_client
         if not player:
-            return await send_localized_message(ctx, "noPlayer", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noPlayer", ephemeral=True)
 
         if not player.is_privileged(ctx.author):
-            return await send_localized_message(ctx, "missingPosPerm", ephemeral=True)
+            return await send_localized_message(ctx, "permissions.missingPosition", ephemeral=True)
 
         if not player.current:
-            return await send_localized_message(ctx, "noTrackPlaying", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noTrackPlaying", ephemeral=True)
         
         await player.seek(0)
-        await send_localized_message(ctx, "replay")
+        await send_localized_message(ctx, "player.controls.replay")
 
     @commands.hybrid_command(name="shuffle", aliases=get_aliases("shuffle"))
     @commands.dynamic_cooldown(cooldown_check, commands.BucketType.guild)
@@ -729,18 +729,18 @@ class Basic(commands.Cog):
         "Randomizes the tracks in the queue."
         player: voicelink.Player = ctx.guild.voice_client
         if not player:
-            return await send_localized_message(ctx, "noPlayer", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noPlayer", ephemeral=True)
 
         if not player.is_privileged(ctx.author):
             if ctx.author in player.shuffle_votes:
-                return await send_localized_message(ctx, "voted", ephemeral=True)
+                return await send_localized_message(ctx, "voting.voted", ephemeral=True)
             
             player.shuffle_votes.add(ctx.author)
             if len(player.shuffle_votes) < (required := player.required()):
-                return await send_localized_message(ctx, "shuffleVote", ctx.author, len(player.shuffle_votes), required)
+                return await send_localized_message(ctx, "player.controls.shuffle.vote", ctx.author, len(player.shuffle_votes), required)
         
         await player.shuffle("queue", ctx.author)
-        await send_localized_message(ctx, "shuffled")
+        await send_localized_message(ctx, "player.controls.shuffle.success")
 
     @commands.hybrid_command(name="swap", aliases=get_aliases("swap"))
     @app_commands.describe(
@@ -752,13 +752,13 @@ class Basic(commands.Cog):
         "Swaps the specified song to the specified song."
         player: voicelink.Player = ctx.guild.voice_client
         if not player:
-            return await send_localized_message(ctx, "noPlayer", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noPlayer", ephemeral=True)
 
         if not player.is_privileged(ctx.author):
-            return await send_localized_message(ctx, "missingPosPerm", ephemeral=True)
+            return await send_localized_message(ctx, "permissions.missingPosition", ephemeral=True)
 
         track1, track2 = await player.swap_track(position1, position2, ctx.author)        
-        await send_localized_message(ctx, "swapped", track1.title, track2.title)
+        await send_localized_message(ctx, "queue.management.swapped", track1.title, track2.title)
 
     @commands.hybrid_command(name="move", aliases=get_aliases("move"))
     @app_commands.describe(
@@ -770,13 +770,13 @@ class Basic(commands.Cog):
         "Moves the specified song to the specified position."
         player: voicelink.Player = ctx.guild.voice_client
         if not player:
-            return await send_localized_message(ctx, "noPlayer", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noPlayer", ephemeral=True)
         
         if not player.is_privileged(ctx.author):
-            return await send_localized_message(ctx, "missingPosPerm", ephemeral=True)
+            return await send_localized_message(ctx, "permissions.missingPosition", ephemeral=True)
 
         moved_track = await player.move_track(target, to, ctx.author)
-        await send_localized_message(ctx, "moved", moved_track, to)
+        await send_localized_message(ctx, "queue.management.moved", moved_track, to)
 
     @commands.hybrid_command(name="lyrics", aliases=get_aliases("lyrics"))
     @app_commands.describe(title="Searches for your query and displays the reutned lyrics.")
@@ -786,7 +786,7 @@ class Basic(commands.Cog):
         if not title:
             player: voicelink.Player = ctx.guild.voice_client
             if not player or not player.is_playing:
-                return await send_localized_message(ctx, "noTrackPlaying", ephemeral=True)
+                return await send_localized_message(ctx, "player.errors.noTrackPlaying", ephemeral=True)
             
             title = player.current.title
             artist = player.current.author
@@ -796,7 +796,7 @@ class Basic(commands.Cog):
         if lyrics_platform:
             lyrics = await lyrics_platform().get_lyrics(title, artist)
             if not lyrics:
-                return await send_localized_message(ctx, "lyricsNotFound", ephemeral=True)
+                return await send_localized_message(ctx, "lyrics.notFound", ephemeral=True)
             
             view = LyricsView(name=title, source={_: re.findall(r'.*\n(?:.*\n){,22}', v or "") for _, v in lyrics.items()}, author=ctx.author)
             view.response = await dispatch_message(ctx, await view.build_embed(), view=view)
@@ -808,22 +808,22 @@ class Basic(commands.Cog):
         "Transfer dj to another."
         player: voicelink.Player = ctx.guild.voice_client
         if not player:
-            return await send_localized_message(ctx, "noPlayer", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noPlayer", ephemeral=True)
 
         if not player.is_user_join(ctx.author):
-            return await send_localized_message(ctx, "notInChannel", ctx.author.mention, player.channel.mention, ephemeral=True)
+            return await send_localized_message(ctx, "voice.connection.notInChannel", ctx.author.mention, player.channel.mention, ephemeral=True)
 
         if player.dj.id != ctx.author.id or player.settings.get('dj', False):
-            return await send_localized_message(ctx, "notdj", f"<@&{player.settings['dj']}>" if player.settings.get('dj') else player.dj.mention, ephemeral=True)
+            return await send_localized_message(ctx, "permissions.notDj", f"<@&{player.settings['dj']}>" if player.settings.get('dj') else player.dj.mention, ephemeral=True)
 
         if player.dj.id == member.id or member.bot:
-            return await send_localized_message(ctx, "djToMe", ephemeral=True)
+            return await send_localized_message(ctx, "permissions.djToSelf", ephemeral=True)
 
         if member not in player.channel.members:
-            return await send_localized_message(ctx, "djNotInChannel", member, ephemeral=True)
+            return await send_localized_message(ctx, "permissions.djNotInChannel", member, ephemeral=True)
 
         player.dj = member
-        await send_localized_message(ctx, "djswap", member)
+        await send_localized_message(ctx, "permissions.djSwapped", member)
 
     @commands.hybrid_command(name="autoplay", aliases=get_aliases("autoplay"))
     @commands.dynamic_cooldown(cooldown_check, commands.BucketType.guild)
@@ -831,14 +831,14 @@ class Basic(commands.Cog):
         "Toggles autoplay mode, it will automatically queue the best songs to play."
         player: voicelink.Player = ctx.guild.voice_client
         if not player:
-            return await send_localized_message(ctx, "noPlayer", ephemeral=True)
+            return await send_localized_message(ctx, "player.errors.noPlayer", ephemeral=True)
 
         if not player.is_privileged(ctx.author):
-            return await send_localized_message(ctx, "missingAutoPlayPerm", ephemeral=True)
+            return await send_localized_message(ctx, "permissions.missingAutoPlay", ephemeral=True)
 
         check = not player.settings.get("autoplay", False)
         player.settings['autoplay'] = check
-        await send_localized_message(ctx, "autoplay", await LangHandler.get_lang(ctx.guild.id, "enabled" if check else "disabled"))
+        await send_localized_message(ctx, "player.controls.autoplay", await LangHandler.get_lang(ctx.guild.id, "common.status.enabled" if check else "common.status.disabled"))
 
         if not player.is_playing:
             await player.do_next()
@@ -863,7 +863,7 @@ class Basic(commands.Cog):
         "Test if the bot is alive, and see the delay between your commands and my response."
         player: voicelink.Player = ctx.guild.voice_client
 
-        value = await LangHandler.get_lang(ctx.guild.id, "pingTitle1", "pingField1", "pingTitle2", "pingField2")
+        value = await LangHandler.get_lang(ctx.guild.id, "ping.title1", "ping.field1", "ping.title2", "ping.field2")
         
         embed = discord.Embed(color=Config().embed_color)
         embed.add_field(
