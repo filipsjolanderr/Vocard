@@ -266,6 +266,29 @@ class MongoDBHandler:
                 raise Exception(f"Update failed: {str(e)}")
 
     @classmethod
+    def get_cached_settings(
+        cls, 
+        guild_id: int
+    ) -> Dict[str, Any]:
+        """
+        Retrieve settings for a guild with caching.
+        
+        Args:
+            guild_id: The Discord guild ID
+            
+        Returns:
+            Dict containing guild settings or empty dict if not found
+        """
+        try:
+            if guild_id not in cls._settings_buffer:
+                return {}
+
+            return copy.deepcopy(cls._settings_buffer[guild_id])
+
+        except Exception as e:
+            raise ConnectionError(f"Failed to retrieve settings: {str(e)}")
+        
+    @classmethod
     async def get_settings(
         cls, 
         guild_id: int,
