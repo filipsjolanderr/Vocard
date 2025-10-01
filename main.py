@@ -223,6 +223,7 @@ intents = discord.Intents.default()
 intents.message_content = False if bot_config.bot_prefix is None else True
 intents.members = bot_config.ipc_client.get("enable", False)
 intents.voice_states = True
+intents.presences = False
 
 bot = Vocard(
     command_prefix=get_prefix,
