@@ -19,7 +19,8 @@
             "noTrackFound": "Không tìm thấy bài hát nào với truy vấn đó! Vui lòng cung cấp url hợp lệ."
         },
         "dropdown": {
-            "trackSelect": "Chọn một bài hát để bỏ qua đến ..."
+            "trackSelect": "Chọn một bài hát để bỏ qua đến ...",
+            "filterSelect": "Chọn một bộ lọc để áp dụng ..."
         },
         "buttons": {
             "back": "Quay Lại",
@@ -107,15 +108,6 @@
         "djNotInChannel": "`{0}` không ở trong kênh voice.",
         "djSwapped": "Bạn đã chuyển vai trò DJ cho `{0}`."
     },
-    "unmapped": {
-        "notVote": "Lệnh này yêu cầu bạn bình chọn! Gõ `/vote` để biết thêm thông tin.",
-        "missingTrackInfo": "Một số chi tiết bài hát bị thiếu.",
-        "noVoiceChannel": "Không Tìm Thấy Kênh Voice!",
-        "playerFilter": "Chọn một bộ lọc để áp dụng ...",
-        "searchTimeout": "Tìm kiếm hết thời gian. Vui lòng thử lại sau.",
-        "decodeError": "Đã xảy ra lỗi khi giải mã tệp!",
-        "invalidTimeOrder": "Thời gian kết thúc không thể nhỏ hơn hoặc bằng thời gian bắt đầu"
-    },
     "settings": {
         "actions": {
             "languageNotFound": "Không tìm thấy gói ngôn ngữ! Vui lòng chọn một gói ngôn ngữ hiện có.",
@@ -169,6 +161,7 @@
             "permsValue": "📖 Đọc: ✓    ✍🏽 Viết: {0}    🗑️ Xóa: {1}",
             "permsValue2": "📖 Đọc: {0}",
             "trackList": "Bài Hát",
+            "footer2": "Tổng thời gian: {0}",
             "playlistSelect": "Chọn một danh sách phát để xem ..."
         },
         "errors": {

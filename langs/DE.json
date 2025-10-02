@@ -19,7 +19,8 @@
             "noTrackFound": "Es wurden keine Songs mit dieser Abfrage gefunden! Bitte gib eine gültige URL an."
         },
         "dropdown": {
-            "trackSelect": "Wähle einen Song aus, um zu überspringen ..."
+            "trackSelect": "Wähle einen Song aus, um zu überspringen ...",
+            "filterSelect": "Wähle einen Filter aus, um ihn anzuwenden ..."
         },
         "buttons": {
             "back": "Zurück",
@@ -106,15 +107,6 @@
         "djToSelf": "Du kannst den DJ nicht an dich selbst oder einer App übertragen.",
         "djNotInChannel": "`{0}` ist nicht im Sprachkanal.",
         "djSwapped": "Du hast die DJ-Rolle auf `{0}` übertragen."
-    },
-    "unmapped": {
-        "notVote": "Dieser Befehl erfordert Deine Stimme! Gebe `/vote` ein, um weitere Informationen zu erhalten.",
-        "missingTrackInfo": "Einige Track-Informationen fehlen.",
-        "noVoiceChannel": "Dieser Sprachkanal wurde nicht gefunden!",
-        "playerFilter": "Wähle einen Filter aus, um ihn anzuwenden ...",
-        "searchTimeout": "Die Suche wurde abgebrochen. Bitte versuche es später erneut.",
-        "decodeError": "Beim Dekodieren der Datei ist etwas schief gelaufen!",
-        "invalidTimeOrder": "Die Endzeit darf nicht kleiner oder gleich dem Startzeit sein."
     },
     "settings": {
         "actions": {

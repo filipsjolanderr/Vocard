@@ -19,7 +19,8 @@
             "noTrackFound": "Aucune chanson trouvée pour cette requête ! Veuillez fournir une URL valide."
         },
         "dropdown": {
-            "trackSelect": "Sélectionnez une chanson vers laquelle passer..."
+            "trackSelect": "Sélectionnez une chanson vers laquelle passer...",
+            "filterSelect": "Sélectionnez un filtre à appliquer..."
         },
         "buttons": {
             "back": "Précédent",
@@ -106,15 +107,6 @@
         "djToSelf": "Impossible de transférer le rôle de DJ à vous-même ou à un bot.",
         "djNotInChannel": "`{0}` n'est pas dans le salon vocal.",
         "djSwapped": "Vous avez transféré le rôle de DJ à `{0}`."
-    },
-    "unmapped": {
-        "notVote": "Cette commande nécessite votre vote ! Tapez `/vote` pour en savoir plus.",
-        "missingTrackInfo": "Certaines informations sur le morceau sont manquantes.",
-        "noVoiceChannel": "Aucun salon vocal trouvé !",
-        "playerFilter": "Sélectionnez un filtre à appliquer...",
-        "searchTimeout": "Recherche expirée. Veuillez réessayer plus tard.",
-        "decodeError": "Une erreur s'est produite lors du décodage du fichier !",
-        "invalidTimeOrder": "L'heure de fin ne peut pas être inférieure ou égale à celle de début"
     },
     "settings": {
         "actions": {

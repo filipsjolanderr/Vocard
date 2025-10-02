@@ -19,7 +19,8 @@
             "noTrackFound": "未找到對應的歌曲，請提供有效連結。"
         },
         "dropdown": {
-            "trackSelect": "選擇要跳轉的歌曲 ..."
+            "trackSelect": "選擇要跳轉的歌曲 ...",
+            "filterSelect": "選擇要套用的音效 ..."
         },
         "buttons": {
             "back": "上一首",
@@ -106,15 +107,6 @@
         "djToSelf": "您不能將 DJ 身分轉移給自己或機器人。",
         "djNotInChannel": "`{0}` 不在語音頻道中。",
         "djSwapped": "您已將 DJ 身分轉移給 `{0}`。"
-    },
-    "unmapped": {
-        "notVote": "此指令需要您先投票！輸入 `/vote` 了解更多。",
-        "missingTrackInfo": "部分曲目資訊缺失。",
-        "noVoiceChannel": "未找到語音頻道！",
-        "playerFilter": "選擇要套用的音效 ...",
-        "searchTimeout": "搜尋逾時，請稍後再試。",
-        "decodeError": "解碼檔案時發生錯誤！",
-        "invalidTimeOrder": "結束時間不能小於或等於開始時間"
     },
     "settings": {
         "actions": {

@@ -19,7 +19,8 @@
             "noTrackFound": "Nie znaleziono utworu! Podaj poprawny adres URL."
         },
         "dropdown": {
-            "trackSelect": "Wybierz pozycję do której pominąć ..."
+            "trackSelect": "Wybierz pozycję do której pominąć ...",
+            "filterSelect": "Wybierz efekt który chesz nałożyć ..."
         },
         "buttons": {
             "back": "Cofnij",
@@ -106,15 +107,6 @@
         "djToSelf": "Nie możesz przekazać roli DJ'a sobie lub botu.",
         "djNotInChannel": "`{0}` nie jest na kanale głosowym.",
         "djSwapped": "Przekazałeś rolę DJ'a użytkownikowi `{0}`."
-    },
-    "unmapped": {
-        "notVote": "To polecenie wymaga głosowania! Wpisz `/vote`, aby uzyskać więcej informacji.",
-        "missingTrackInfo": "Brakuje niektórych informacji o utworze.",
-        "noVoiceChannel": "Kanał nie został znaleziony",
-        "playerFilter": "Wybierz efekt który chesz nałożyć ...",
-        "searchTimeout": "Upłynął czas wyszukiwania. Spróbuj ponownie później.",
-        "decodeError": "Coś poszło nie tak podczas dekodowania pliku!",
-        "invalidTimeOrder": "Czas zakończenia odtwarzania nie może być mniejszy lub równy czasowi startu"
     },
     "settings": {
         "actions": {

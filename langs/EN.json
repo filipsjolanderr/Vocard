@@ -19,7 +19,8 @@
             "noTrackFound": "No songs were found with that query! Please provide a valid url."
         },
         "dropdown": {
-            "trackSelect": "Select a song to skip to ..."
+            "trackSelect": "Select a song to skip to ...",
+            "filterSelect": "Select a filter to apply ..."
         },
         "buttons": {
             "back": "Back",
@@ -106,16 +107,6 @@
         "djToSelf": "You cannot transfer role of DJ to yourself or a bot.",
         "djNotInChannel": "`{0}` is not in the voice channel.",
         "djSwapped": "You have transferred the role of dj to `{0}`."
-    },
-    "unmapped": {
-        "notVote": "This command requires your vote! Type `/vote` for more info.",
-        "emptyPlaylistMessage": "🎶 No playlists found. Create your first one with `/playlist create`!",
-        "missingTrackInfo": "Some track details are missing.",
-        "noVoiceChannel": "Voice Channel Not Found!",
-        "playerFilter": "Select a filter to apply ...",
-        "searchTimeout": "Search timed out. Please try again later.",
-        "decodeError": "Something went wrong while decoding the file!",
-        "invalidTimeOrder": "End time cannot be less than or equal to start time"
     },
     "settings": {
         "actions": {

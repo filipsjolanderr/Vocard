@@ -19,7 +19,8 @@
             "noTrackFound": "未找到对应的歌曲，请提供有效链接。"
         },
         "dropdown": {
-            "trackSelect": "选择要跳转的歌曲 ..."
+            "trackSelect": "选择要跳转的歌曲 ...",
+            "filterSelect": "选择要应用的音效 ..."
         },
         "buttons": {
             "back": "上一首",
@@ -106,15 +107,6 @@
         "djToSelf": "您不能将 DJ 身份转移给自己或机器人。",
         "djNotInChannel": "`{0}` 不在语音频道中。",
         "djSwapped": "您已将 DJ 身份转移给 `{0}`。"
-    },
-    "unmapped": {
-        "notVote": "该命令需要您先投票！输入 `/vote` 了解更多。",
-        "missingTrackInfo": "部分曲目信息缺失。",
-        "noVoiceChannel": "未找到语音频道！",
-        "playerFilter": "选择要应用的音效 ...",
-        "searchTimeout": "搜索超时，请稍后重试。",
-        "decodeError": "解码文件时出错！",
-        "invalidTimeOrder": "结束时间不能小于或等于开始时间"
     },
     "settings": {
         "actions": {

@@ -19,7 +19,8 @@
             "noTrackFound": "No se encontraron canciones con esa consulta. Proporcione una URL válida."
         },
         "dropdown": {
-            "trackSelect": "Seleccione una canción para saltar a ..."
+            "trackSelect": "Seleccione una canción para saltar a ...",
+            "filterSelect": "Seleccione un filtro para aplicar ..."
         },
         "buttons": {
             "back": "Atrás",
@@ -106,15 +107,6 @@
         "djToSelf": "No puedes transferir el rol de DJ a ti mismo o a un bot.",
         "djNotInChannel": "`{0}` no está en el canal de voz.",
         "djSwapped": "Has transferido el rol de DJ a `{0}`."
-    },
-    "unmapped": {
-        "notVote": "¡Este comando requiere su voto! Escriba `/vote` para obtener más información.",
-        "missingTrackInfo": "Falta información de la canción.",
-        "noVoiceChannel": "¡Canal de voz no encontrado!",
-        "playerFilter": "Seleccione un filtro para aplicar ...",
-        "searchTimeout": "La búsqueda ha expirado. Por favor, inténtelo de nuevo más tarde.",
-        "decodeError": "¡Algo salió mal al decodificar el archivo!",
-        "invalidTimeOrder": "El tiempo final no puede ser menor o igual que el tiempo de inicio."
     },
     "settings": {
         "actions": {

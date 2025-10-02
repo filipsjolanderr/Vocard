@@ -19,7 +19,8 @@
             "noTrackFound": "そのクエリで曲が見つかりませんでした！有効なURLを入力してください。"
         },
         "dropdown": {
-            "trackSelect": "スキップする曲を選択してください..."
+            "trackSelect": "スキップする曲を選択してください...",
+            "filterSelect": "適用するフィルターを選択してください..."
         },
         "buttons": {
             "back": "戻る",
@@ -106,15 +107,6 @@
         "djToSelf": "自分自身またはボットにDJ権限を移行することはできません。",
         "djNotInChannel": "`{0}`はボイスチャンネルにいません。",
         "djSwapped": "DJの役割を`{0}`に移行しました。"
-    },
-    "unmapped": {
-        "notVote": "このコマンドにはあなたの投票が必要です！詳細については、/voteを入力してください。",
-        "missingTrackInfo": "一部のトラック情報が欠落しています。",
-        "noVoiceChannel": "音声チャンネルが見つかりません！",
-        "playerFilter": "適用するフィルターを選択してください...",
-        "searchTimeout": "検索がタイムアウトしました。後でもう一度お試しください。",
-        "decodeError": "ファイルのデコード中に問題が発生しました！",
-        "invalidTimeOrder": "終了時間は開始時間より大きくない必要があります。"
     },
     "settings": {
         "actions": {
