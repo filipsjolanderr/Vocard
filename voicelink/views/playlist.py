@@ -189,7 +189,7 @@ class PlaylistViewManager(DynamicViewManager):
     def __init__(self, ctx: commands.Context, results: list[dict[str, Any]]):
         self.ctx: commands.Context[commands.Bot] = ctx
         self.results: list[dict[str, Any]] = results
-        self.lang: str = MongoDBHandler.get_cached_settings(ctx.guild.id).get("lang", "EN")
+        self.lang: str = MongoDBHandler.get_cached_settings(ctx.guild.id).get("lang")
         
         views = {"home": self}
         views.update({result["id"]: PlaylistView(self, result) for result in results})

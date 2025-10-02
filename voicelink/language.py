@@ -40,6 +40,7 @@ class LangHandler:
 
     _langs: dict[str, dict[str, str]] = {}
     _local_langs: dict[str, dict[str, str]] = {}
+    _default_lang: str = "EN"
 
     @classmethod
     def init(
@@ -118,9 +119,12 @@ class LangHandler:
         Returns:
             str | list[str] | None: The requested string(s), or "Not found!" if missing.
         """
+        if not lang:
+            lang = cls._default_lang
+            
         lang = lang.upper()
         if lang not in cls._langs:
-            lang = "EN"
+            lang = cls._default_lang
 
         lang_dict = cls._langs.get(lang, {})
         if len(keys) == 1:
@@ -144,7 +148,7 @@ class LangHandler:
             str | list[str] | None: The requested string(s).
         """
         settings = await MongoDBHandler.get_settings(guild_id)
-        lang = settings.get("lang", "EN")
+        lang = settings.get("lang", LangHandler._default_lang)
         return cls._get_lang(lang, *keys)
 
     @classmethod

@@ -35,7 +35,7 @@ class PaginationView(discord.ui.View):
         
         self.pagination: Pagination = pagination
         self.author: discord.Member = author
-        self.lang: str = MongoDBHandler.get_cached_settings(author.guild.id).get("lang", "EN")
+        self.lang: str = MongoDBHandler.get_cached_settings(author.guild.id).get("lang")
         self.update_view()
     
     def update_view(self, extra_states: Optional[Dict[str, Dict[str, str]]] = None) -> None:
