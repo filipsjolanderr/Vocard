@@ -470,11 +470,11 @@ class Player(VoiceProtocol):
                 
                 # Send a new controller message if none exists
                 if not self.controller:
-                    self.controller = await dispatch_message(self.context, content=embed, view=view, requires_fetch=True)
+                    self.controller = await dispatch_message(self.context, content=embed, view=view, delete_after=None, requires_fetch=True)
 
             elif not await self.is_position_fresh():
                 await self.controller.delete()
-                self.controller = await dispatch_message(self.context, content=embed, view=view, requires_fetch=True)
+                self.controller = await dispatch_message(self.context, content=embed, view=view, delete_after=None, requires_fetch=True)
 
             else:
                 await self.controller.edit(embed=embed, view=view)
