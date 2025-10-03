@@ -293,7 +293,8 @@ class MongoDBHandler:
         cls, 
         guild_id: int,
         *,
-        force_refresh: bool = False
+        deep_copy: bool = True,
+        force_refresh: bool = False,
     ) -> Dict[str, Any]:
         """
         Retrieve settings for a guild with caching.
@@ -323,8 +324,9 @@ class MongoDBHandler:
                     cls._settings_buffer[guild_id] = settings
                     cls._last_access[guild_id] = time.time()
                 
-                return copy.deepcopy(cls._settings_buffer[guild_id])
-                
+                buffer = cls._settings_buffer[guild_id]
+                return copy.deepcopy(buffer) if deep_copy else buffer
+
         except Exception as e:
             raise ConnectionError(f"Failed to retrieve settings: {str(e)}")
 
@@ -352,7 +354,7 @@ class MongoDBHandler:
             ConnectionError: If database operation fails
         """
         try:
-            settings = await cls.get_settings(guild_id)
+            settings = await cls.get_settings(guild_id, deep_copy=False)
             result = await cls._update_db(
                 cls._settings_db,
                 settings,
@@ -403,7 +405,7 @@ class MongoDBHandler:
                 if force_refresh or user_id not in cls._users_buffer:
                     user = await cls._users_db.find_one({"_id": user_id})
                     if not user:
-                        user = {"_id": user_id, **copy.deepcopy(cls._user_base)}
+                        user = {**copy.deepcopy(cls._user_base), "_id": user_id}
                         try:
                             await cls._users_db.insert_one(user)
                         except Exception as e:
