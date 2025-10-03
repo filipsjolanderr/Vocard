@@ -86,21 +86,22 @@ class Vocard(commands.Bot):
         settings = await MongoDBHandler.get_settings(message.guild.id)
         if settings and (request_channel := settings.get("music_request_channel")):
             if message.channel.id == request_channel.get("text_channel_id"):
-                ctx = await self.get_context(message)
+                ctx = await self.get_context(message)    
                 try:
-                    cmd = self.get_command("play")
-                    if message.content:
-                        await cmd(ctx, query=message.content)
+                    if not ctx.prefix:
+                        cmd = self.get_command("play")
+                        if message.content:
+                            await cmd(ctx, query=message.content)
 
-                    elif message.attachments:
-                        for attachment in message.attachments:
-                            await cmd(ctx, query=attachment.url)
+                        elif message.attachments:
+                            for attachment in message.attachments:
+                                await cmd(ctx, query=attachment.url)
 
                 except Exception as e:
                     await dispatch_message(ctx, str(e), ephemeral=True)
 
                 finally:
-                    return await message.delete()
+                    await message.delete()
 
         await self.process_commands(message)
 
