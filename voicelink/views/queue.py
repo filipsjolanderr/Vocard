@@ -27,7 +27,7 @@ import discord
 
 from typing import TYPE_CHECKING
 
-from .utils import Pagination, BaseModal
+from .utils import Pagination
 from .pagination import PaginationView
 
 from ..language import LangHandler
@@ -59,7 +59,7 @@ class QueueView(PaginationView):
         self.response: discord.Message = None
 
         super().__init__(
-            Pagination[Track](
+            Pagination["Track"](
                 items=player.queue.tracks() if is_queue else list(reversed(player.queue.history())),
                 page_size=7,
             ),
