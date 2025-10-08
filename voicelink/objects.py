@@ -32,7 +32,6 @@ from .config import Config
 from .utils import format_ms
 from .transformer import encode, decode
 
-YOUTUBE_REGEX = re.compile(r'(https?://)?(www\.)?youtube\.(com|nl)/watch\?v=([-\w]+)')
 
 class Track:
     """The base track object. Returns critical track information needed for parsing by Lavalink.
@@ -80,9 +79,6 @@ class Track:
         self._search_type: SearchType = search_type
 
         self.thumbnail: str = info.get("artworkUrl")
-        if not self.thumbnail and YOUTUBE_REGEX.match(self.uri):
-            self.thumbnail = f"https://img.youtube.com/vi/{self.identifier}/maxresdefault.jpg"
-        
         self.emoji: str = Config().get_source_config(self.source, "emoji")
         self.length: float = info.get("length")
         
@@ -115,7 +111,7 @@ class Track:
     @property
     def formatted_length(self) -> str:
         return format_ms(self.length)
-    
+
     @property
     def data(self) -> dict:
         return {

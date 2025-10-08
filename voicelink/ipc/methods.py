@@ -433,7 +433,7 @@ async def updatePlaylist(bot: commands.Bot, data: Dict) -> Dict:
                 return {
                     "op": "updatePlaylist",
                     "status": "error",
-                    "msg": f"Please enter a valid link or public spotify or youtube playlist link.",
+                    "msg": f"Please enter a valid link or public playlist link.",
                     "field": "playlistUrl",
                     "userId": str(user_id)
                 }
