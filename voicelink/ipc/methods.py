@@ -792,8 +792,7 @@ async def process_methods(ipc_client: IPCClient, bot: commands.Bot, data: Dict) 
             await ipc_client.send(resp)
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
+        ipc_client._logger.error(f"Failed to process method '{op}' by user {user_id}", exc_info=e)
         payload = {
             "op": "errorMsg",
             "level": "error",
