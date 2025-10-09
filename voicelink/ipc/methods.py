@@ -152,7 +152,7 @@ async def getRecommendation(bot: commands.Bot, data: Dict) -> None:
     
     track_data = Track.decode(track_id := data.get("trackId"))
     track = Track(track_id=track_id, info=track_data, requester=bot.user)
-    tracks: List[Track] = await node.get_recommendations(track, limit=60)
+    tracks: List[Track] = await track.get_recommendations(node)
 
     return {
         "op": "getRecommendation",

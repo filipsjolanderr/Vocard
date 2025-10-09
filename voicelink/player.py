@@ -857,14 +857,14 @@ class Player(VoiceProtocol):
                 await self.set_pause(True)
     
     async def get_recommendations(self, *, track: Optional[Track] = None) -> bool:
-        """Get recommendations from Youtube or Spotify."""
+        """Fetches and adds recommended tracks based on the provided track or recent history."""
         if not track:
             try:
                 track = choice(self.queue.history(incTrack=True)[-5:])
             except IndexError:
                 return False
-            
-        tracks = await self._node.get_recommendations(track)
+
+        tracks = await track.get_recommendations(self._node)
         if tracks:
             await self.add_track(tracks, duplicate=False)
             

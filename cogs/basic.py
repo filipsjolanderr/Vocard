@@ -226,7 +226,7 @@ class Basic(commands.Cog):
         if url(query):
             return await send_localized_message(ctx, "search.noLinkSupport", ephemeral=True)
         
-        search_type: voicelink.SearchType = voicelink.SearchType.match(platform) or Config().search_platform
+        search_type: voicelink.SearchType = voicelink.SearchType.from_platform(platform) or Config().search_platform
         tracks = await player.get_tracks(query=query, requester=ctx.author, search_type=search_type)
         if not tracks:
             return await send_localized_message(ctx, "player.errors.noTrackFound")
