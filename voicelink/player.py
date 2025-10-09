@@ -448,10 +448,7 @@ class Player(VoiceProtocol):
 
     async def invoke_controller(self):
         """Sends or updates the music controller message in the designated channel."""
-        if not self.settings.get('controller', True):
-            return
-        
-        if self._updating or not self.channel:
+        if not self.settings.get('controller', True) or self._updating or not self.channel:
             return
         
         self._updating = True
@@ -460,8 +457,7 @@ class Player(VoiceProtocol):
             embed, view = self.build_embed(self.current), InteractiveController(self)
             if not self.controller:
                 if request_channel_data := self.settings.get("music_request_channel"):
-                    channel = self.bot.get_channel(request_channel_data.get("text_channel_id"))
-                    if channel:
+                    if channel := self.bot.get_channel(request_channel_data.get("text_channel_id")):
                         try:
                             self.controller = await channel.fetch_message(request_channel_data.get("controller_msg_id"))
                             await self.controller.edit(embed=embed, view=view)
@@ -473,7 +469,11 @@ class Player(VoiceProtocol):
                     self.controller = await dispatch_message(self.context, content=embed, view=view, delete_after=None, requires_fetch=True)
 
             elif not await self.is_position_fresh():
-                await self.controller.delete()
+                try:
+                    await self.controller.delete()
+                except errors.NotFound:
+                    self.controller = None
+                    
                 self.controller = await dispatch_message(self.context, content=embed, view=view, delete_after=None, requires_fetch=True)
 
             else:
