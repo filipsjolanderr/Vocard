@@ -144,8 +144,10 @@ class Listeners(commands.Cog):
         try:
             player._track_is_stuck = True
             await player.context.send(f"{error['message']} The next song will begin in the next 5 seconds.", delete_after=10)
-        except:
-            pass
+        except (discord.errors.HTTPException, discord.errors.Forbidden, AttributeError) as e:
+            func.logger.debug(f"Could not send track exception message: {e}")
+        except Exception as e:
+            func.logger.warning(f"Unexpected error in track exception handler: {e}", exc_info=True)
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):

@@ -82,7 +82,7 @@ class Vocard(commands.Bot):
                 return await message.channel.send("I don't have a bot prefix set.")
             return await message.channel.send(f"My prefix is `{prefix}`")
 
-        # Fetch guild settings and check if the mesage is in the music request channel
+        # Fetch guild settings and check if the message is in the music request channel
         settings = await MongoDBHandler.get_settings(message.guild.id)
         if settings and (request_channel := settings.get("music_request_channel")):
             if message.channel.id == request_channel.get("text_channel_id"):
@@ -90,24 +90,38 @@ class Vocard(commands.Bot):
                 try:
                     if not ctx.prefix:
                         cmd = self.get_command("play")
-                        if message.content:
-                            await cmd(ctx, query=message.content)
+                        if cmd:
+                            if message.content:
+                                await cmd(ctx, query=message.content)
+                            elif message.attachments:
+                                for attachment in message.attachments:
+                                    await cmd(ctx, query=attachment.url)
 
-                        elif message.attachments:
-                            for attachment in message.attachments:
-                                await cmd(ctx, query=attachment.url)
-
+                except (discord.errors.HTTPException, discord.errors.Forbidden) as e:
+                    func.logger.warning(f"Failed to process music request: {e}")
                 except Exception as e:
-                    await dispatch_message(ctx, str(e), ephemeral=True)
+                    func.logger.error(f"Error processing music request: {e}", exc_info=True)
+                    try:
+                        await dispatch_message(ctx, str(e), ephemeral=True)
+                    except Exception:
+                        pass
 
                 finally:
-                    await message.delete()
+                    try:
+                        await message.delete()
+                    except (discord.errors.NotFound, discord.errors.Forbidden):
+                        pass
+                    except Exception as e:
+                        func.logger.warning(f"Failed to delete message: {e}")
 
         await self.process_commands(message)
 
     async def setup_hook(self) -> None:
         # Connecting to MongoDB
         await MongoDBHandler.init(bot_config.mongodb_url, bot_config.mongodb_name)
+        
+        # Start batch processor for history updates
+        await MongoDBHandler.start_batch_processor()
 
         # Set translator
         await self.tree.set_translator(Translator())
@@ -136,6 +150,12 @@ class Vocard(commands.Bot):
             for locale_key, values in self.tree.translator.MISSING_TRANSLATOR.items():
                 func.logger.warning(f'Missing translation for "{", ".join(values)}" in "{locale_key}"')
             self.tree.translator.MISSING_TRANSLATOR.clear()
+
+    async def close(self) -> None:
+        """Cleanup on bot shutdown."""
+        # Flush remaining batched history updates
+        await MongoDBHandler.stop_batch_processor()
+        await super().close()
 
     async def on_ready(self):
         func.logger.info("------------------")
@@ -179,8 +199,10 @@ class Vocard(commands.Bot):
 
         try:
             return await ctx.reply(error, ephemeral=True)
-        except:
-            pass
+        except (discord.errors.HTTPException, discord.errors.Forbidden, discord.errors.NotFound) as e:
+            func.logger.warning(f"Failed to send error message to user: {e}")
+        except Exception as e:
+            func.logger.error(f"Unexpected error while sending error message: {e}", exc_info=True)
 
 class CommandCheck(discord.app_commands.CommandTree):
     async def interaction_check(self, interaction: discord.Interaction, /) -> bool:

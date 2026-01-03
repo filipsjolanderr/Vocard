@@ -22,6 +22,8 @@ SOFTWARE.
 """
 
 import aiohttp
+import asyncio
+import logging
 import random
 import re
 import hmac
@@ -93,7 +95,11 @@ class A_ZLyrics(LyricsPlatform):
                 if resp.status != 200:
                     return None
                 return await resp.text()
-        except:
+        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+            logging.getLogger("vocard.lyrics").debug(f"Network error fetching lyrics: {e}")
+            return ""
+        except Exception as e:
+            logging.getLogger("vocard.lyrics").warning(f"Unexpected error fetching lyrics: {e}")
             return ""
 
     async def get_lyrics(self, title: str, artist: str) -> dict[str, str]:
@@ -126,7 +132,11 @@ class A_ZLyrics(LyricsPlatform):
                     del lyrics_parts[count-1]
                 return {lyrics_parts[i].replace("[", "").replace(":]", ""): self.clearText(lyrics_parts[i + 1]) for i in range(0, len(lyrics_parts), 2)}
             return {"default": self.clearText(lyrics_parts[0])}
-        except:
+        except (IndexError, KeyError, AttributeError) as e:
+            logging.getLogger("vocard.lyrics").debug(f"Error parsing lyrics structure: {e}")
+            return None
+        except Exception as e:
+            logging.getLogger("vocard.lyrics").warning(f"Unexpected error parsing lyrics: {e}")
             return None
 
     async def googleGet(self, acc = 0.6, artist='', title='') -> Optional[str]:
@@ -137,7 +147,11 @@ class A_ZLyrics(LyricsPlatform):
 
         try:
             results = re.findall(r'(azlyrics\.com\/lyrics\/[a-z0-9]+\/(\w+).html)', google_page)
-        except:
+        except (AttributeError, TypeError) as e:
+            logging.getLogger("vocard.lyrics").debug(f"Error parsing search results: {e}")
+            return None
+        except Exception as e:
+            logging.getLogger("vocard.lyrics").warning(f"Unexpected error parsing search results: {e}")
             return None
             
         if len(results):
@@ -226,7 +240,11 @@ class Lyrist(LyricsPlatform):
                 
                 data = await resp.json()
                 return {"default": data["lyrics"]}
-        except:
+        except (aiohttp.ClientError, asyncio.TimeoutError, KeyError) as e:
+            logging.getLogger("vocard.lyrics").debug(f"Error fetching lyrics from API: {e}")
+            return None
+        except Exception as e:
+            logging.getLogger("vocard.lyrics").warning(f"Unexpected error fetching lyrics: {e}")
             return None
 
 class Lrclib(LyricsPlatform):
@@ -240,7 +258,11 @@ class Lrclib(LyricsPlatform):
                 if resp.status != 200:
                     return None
                 return await resp.json()
-        except:
+        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+            logging.getLogger("vocard.lyrics").debug(f"Network error fetching lyrics: {e}")
+            return []
+        except Exception as e:
+            logging.getLogger("vocard.lyrics").warning(f"Unexpected error fetching lyrics: {e}")
             return []
         
     async def get_lyrics(self, title: str, artist: str) -> Optional[dict[str, str]]:

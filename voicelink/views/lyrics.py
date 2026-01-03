@@ -61,7 +61,7 @@ class LyricsView(PaginationView):
             child.disabled = True
         try:
             await self.response.edit(view=self)
-        except:
+        except (discord.errors.NotFound, discord.errors.Forbidden, AttributeError):
             pass
 
     async def build_embed(self) -> discord.Embed:

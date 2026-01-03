@@ -68,7 +68,7 @@ class HelpView(discord.ui.View):
                 child.disabled = True
         try:
             await self.response.edit(view=self)
-        except:
+        except (discord.errors.NotFound, discord.errors.Forbidden, AttributeError):
             pass
 
     async def interaction_check(self, interaction: discord.Interaction) -> None:

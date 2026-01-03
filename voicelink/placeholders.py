@@ -24,6 +24,7 @@ SOFTWARE.
 from __future__ import annotations
 
 import re
+import logging
 import discord
 
 from discord.ext import commands
@@ -192,7 +193,8 @@ class PlayerPlaceholder:
                 replacement = true_value if result else false_value
                 text = text.replace("{{" + match + "}}", replacement)
 
-            except:
+            except (KeyError, AttributeError, TypeError) as e:
+                # If placeholder evaluation fails, remove the placeholder
                 text = text.replace("{{" + match + "}}", "")
 
         for regex_pattern, func in self.regexes.items():
@@ -235,8 +237,11 @@ class PlayerPlaceholder:
             embed.description = placeholder.replace(embed_form.get("description"), rv)
             embed.color = int(placeholder.replace(embed_form.get("color"), rv))
 
-        except:
-            pass
+        except (ValueError, TypeError, AttributeError, KeyError) as e:
+            # Log but don't fail if embed building has issues
+            logging.getLogger("vocard.placeholders").debug(f"Error building embed: {e}")
+        except Exception as e:
+            logging.getLogger("vocard.placeholders").warning(f"Unexpected error building embed: {e}")
 
         return embed
 

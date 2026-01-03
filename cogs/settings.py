@@ -196,8 +196,14 @@ class Settings(commands.Cog, name="settings"):
         if player and toggle is False and player.controller:
             try:
                 await player.controller.delete()
-            except:
-                discord.ui.View.from_message(player.controller).stop()
+            except (discord.errors.NotFound, discord.errors.Forbidden) as e:
+                func.logger.debug(f"Could not delete controller: {e}")
+                try:
+                    discord.ui.View.from_message(player.controller).stop()
+                except Exception:
+                    pass
+            except Exception as e:
+                func.logger.warning(f"Error deleting controller: {e}")
 
         await MongoDBHandler.update_settings(ctx.guild.id, {"$set": {'controller': toggle}})
         await send_localized_message(ctx, 'settings.actions.controllerToggled', await LangHandler.get_lang(ctx.guild.id, "common.status.enabled" if toggle else "common.status.disabled"))
@@ -278,7 +284,11 @@ class Settings(commands.Cog, name="settings"):
                     )
                 }
                 channel = await ctx.guild.create_text_channel("vocard-song-requests", overwrites=overwrites)
-            except:
+            except (discord.errors.Forbidden, discord.errors.HTTPException) as e:
+                func.logger.warning(f"Failed to create channel: {e}")
+                return await send_localized_message(ctx, "permissions.noCreatePermission")
+            except Exception as e:
+                func.logger.error(f"Unexpected error creating channel: {e}", exc_info=True)
                 return await send_localized_message(ctx, "permissions.noCreatePermission")
 
         channel_perms = channel.permissions_for(ctx.me)

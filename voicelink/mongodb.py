@@ -74,6 +74,13 @@ class MongoDBHandler:
     # Maximum cache size to prevent memory issues
     _MAX_CACHE_SIZE: int = 10000
 
+    # Batching system for user history updates
+    _history_batch: Dict[int, List[str]] = {}  # user_id -> list of track_ids
+    _batch_lock: asyncio.Lock = asyncio.Lock()
+    _batch_task: Optional[asyncio.Task] = None
+    _BATCH_FLUSH_INTERVAL: float = 30.0  # seconds
+    _BATCH_SIZE_LIMIT: int = 50  # tracks per user before flush
+
     # Default user template
     _user_base: UserData = {
         "_id": 0,  # Will be replaced with actual user ID
@@ -237,7 +244,13 @@ class MongoDBHandler:
                                 if isinstance(value, dict) and "$each" in value:
                                     arr.extend(value["$each"])
                                     if "$slice" in value:
-                                        arr[:] = arr[value["$slice"]:]
+                                        slice_val = value["$slice"]
+                                        if slice_val < 0:
+                                            # Keep last N items (negative slice)
+                                            arr[:] = arr[slice_val:]
+                                        else:
+                                            # Keep first N items (positive slice)
+                                            arr[:] = arr[:slice_val]
                                 else:
                                     arr.append(value)
                             elif mode == "$pull":
@@ -249,8 +262,24 @@ class MongoDBHandler:
                         except Exception as e:
                             raise ValueError(f"Error updating {key}: {str(e)}")
 
+                # Build MongoDB update operation
+                mongo_update = {}
+                for mode, action in data.items():
+                    if mode == "$push":
+                        # Handle $push with $each and $slice properly for MongoDB
+                        for key, value in action.items():
+                            if isinstance(value, dict) and "$each" in value:
+                                push_op = {"$each": value["$each"]}
+                                if "$slice" in value:
+                                    push_op["$slice"] = value["$slice"]
+                                mongo_update.setdefault("$push", {})[key] = push_op
+                            else:
+                                mongo_update.setdefault("$push", {})[key] = value
+                    else:
+                        mongo_update.setdefault(mode, {}).update(action)
+                
                 # Then update database
-                result = await db.update_one(filter_, data)
+                result = await db.update_one(filter_, mongo_update)
                 
                 # Update last access time
                 if '_id' in filter_:
@@ -469,6 +498,104 @@ class MongoDBHandler:
             
         except Exception as e:
             raise ConnectionError(f"Failed to update user: {str(e)}")
+
+    @classmethod
+    async def batch_add_history(cls, user_id: int, track_id: str) -> None:
+        """
+        Add a track to the batched history updates.
+        This reduces database writes by batching updates.
+        
+        Args:
+            user_id: The Discord user ID
+            track_id: The track ID to add to history
+        """
+        async with cls._batch_lock:
+            if user_id not in cls._history_batch:
+                cls._history_batch[user_id] = []
+            cls._history_batch[user_id].append(track_id)
+            
+            # Flush if batch size limit reached
+            if len(cls._history_batch[user_id]) >= cls._BATCH_SIZE_LIMIT:
+                await cls._flush_user_history(user_id)
+
+    @classmethod
+    async def _flush_user_history(cls, user_id: int) -> None:
+        """
+        Flush batched history updates for a specific user to the database.
+        
+        Args:
+            user_id: The Discord user ID
+        """
+        if user_id not in cls._history_batch or not cls._history_batch[user_id]:
+            return
+        
+        track_ids = cls._history_batch[user_id]
+        cls._history_batch[user_id] = []
+        
+        try:
+            await cls.update_user(user_id, {
+                "$push": {"history": {"$each": track_ids, "$slice": -25}}
+            })
+            logger.debug(f"Flushed {len(track_ids)} history tracks for user {user_id}")
+        except Exception as e:
+            logger.error(f"Failed to flush history for user {user_id}: {str(e)}", exc_info=True)
+            # Re-add tracks to batch on failure (up to limit to prevent memory issues)
+            if len(track_ids) <= cls._BATCH_SIZE_LIMIT:
+                cls._history_batch[user_id] = track_ids + cls._history_batch.get(user_id, [])
+
+    @classmethod
+    async def _batch_flush_loop(cls) -> None:
+        """
+        Background task that periodically flushes batched history updates.
+        Runs every _BATCH_FLUSH_INTERVAL seconds.
+        """
+        while True:
+            try:
+                await asyncio.sleep(cls._BATCH_FLUSH_INTERVAL)
+                await cls.flush_all_history()
+            except asyncio.CancelledError:
+                # Flush remaining updates on cancellation
+                await cls.flush_all_history()
+                break
+            except Exception as e:
+                logger.error(f"Error in batch flush loop: {str(e)}", exc_info=True)
+
+    @classmethod
+    async def flush_all_history(cls) -> None:
+        """
+        Flush all pending batched history updates.
+        Should be called on shutdown or periodically.
+        """
+        async with cls._batch_lock:
+            user_ids = list(cls._history_batch.keys())
+            for user_id in user_ids:
+                if cls._history_batch[user_id]:
+                    await cls._flush_user_history(user_id)
+
+    @classmethod
+    async def start_batch_processor(cls) -> None:
+        """
+        Start the background batch processor task.
+        Should be called during bot initialization.
+        """
+        if cls._batch_task is None or cls._batch_task.done():
+            cls._batch_task = asyncio.create_task(cls._batch_flush_loop())
+            logger.info("Started batch history processor")
+
+    @classmethod
+    async def stop_batch_processor(cls) -> None:
+        """
+        Stop the background batch processor and flush remaining updates.
+        Should be called during bot shutdown.
+        """
+        if cls._batch_task and not cls._batch_task.done():
+            cls._batch_task.cancel()
+            try:
+                await cls._batch_task
+            except asyncio.CancelledError:
+                pass
+        await cls.flush_all_history()
+        logger.info("Stopped batch history processor and flushed remaining updates")
 
     @classmethod
     async def delete_user(cls, user_id: int) -> bool:

@@ -25,6 +25,7 @@ import discord
 import io
 import os
 import json
+import logging
 import contextlib
 import textwrap
 import traceback
@@ -376,8 +377,10 @@ class DebugView(discord.ui.View):
         for name in self.bot.cogs.copy().keys():
             try:
                 await self.bot.unload_extension(name)
-            except:
-                pass
+            except (commands.ExtensionNotLoaded, commands.ExtensionNotFound) as e:
+                logging.getLogger("vocard.views").debug(f"Extension {name} not loaded: {e}")
+            except Exception as e:
+                logging.getLogger("vocard.views").warning(f"Error unloading extension {name}: {e}")
 
         player_data = []
         for identifier, node in voicelink.NodePool._nodes.items():
@@ -388,8 +391,8 @@ class DebugView(discord.ui.View):
                 player_data.append(player.data)
                 try:
                     await player.teardown()
-                except:
-                    pass
+                except Exception as e:
+                    logging.getLogger("vocard.views").debug(f"Error tearing down player: {e}")
 
         if os.path.exists(Config.LAST_SESSION_FILE_DIR):
             os.remove(Config.LAST_SESSION_FILE_DIR)    

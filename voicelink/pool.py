@@ -331,7 +331,11 @@ class Node:
 
                     if player.is_paused:
                         await player.set_pause(True)
-            except:
+            except (AttributeError, RuntimeError, discord.errors.ClientException) as e:
+                self._logger.warning(f"Error reconnecting player: {e}")
+                await player.teardown()
+            except Exception as e:
+                self._logger.error(f"Unexpected error during player reconnect: {e}", exc_info=True)
                 await player.teardown()
             await asyncio.sleep(2)
 

@@ -67,7 +67,7 @@ async def connect_channel(ctx: Union[commands.Context, Interaction], channel: Vo
     texts = await LangHandler.get_lang(ctx.guild.id, "voice.connection.noChannel", "voice.connection.noPermission")
     try:
         channel = channel or ctx.author.voice.channel if isinstance(ctx, commands.Context) else ctx.user.voice.channel
-    except:
+    except AttributeError:
         raise VoicelinkException(texts[0])
 
     check = channel.permissions_for(ctx.guild.me)
@@ -431,9 +431,8 @@ class Player(VoiceProtocol):
                 return await self.do_next()
 
             if not track.requester.bot:
-                self._bot.loop.create_task(MongoDBHandler.update_user(track.requester.id, {
-                    "$push": {"history": {"$each": [track.track_id], "$slice": -25}}
-                }))
+                # Use batched history updates to reduce database writes
+                await MongoDBHandler.batch_add_history(track.requester.id, track.track_id)
 
         await self.invoke_controller()
         await self.update_voice_status()
@@ -494,8 +493,10 @@ class Player(VoiceProtocol):
             async for message in self.context.channel.history(limit=5):
                 if message.id == self.controller.id:
                     return True
-        except:
-            pass
+        except (discord.errors.Forbidden, discord.errors.NotFound, AttributeError) as e:
+            self._logger.debug(f"Could not check message position: {e}")
+        except Exception as e:
+            self._logger.warning(f"Unexpected error checking message position: {e}")
 
         return False
     
@@ -509,8 +510,8 @@ class Player(VoiceProtocol):
             
             if self.is_ipc_connected:
                 await self.send_ws({"op": "playerClose"})
-        except:
-            pass
+        except Exception as e:
+            self._logger.warning(f"Error updating settings during teardown: {e}")
 
         try:
             await self.update_voice_status(remove_status=True)
@@ -519,13 +520,15 @@ class Player(VoiceProtocol):
                     await self.controller.edit(embed=self.build_embed(), view=None)
                 else: 
                     await self.controller.delete()
-        except:
-            pass
+        except (discord.errors.NotFound, discord.errors.Forbidden, AttributeError) as e:
+            self._logger.debug(f"Could not update controller during teardown: {e}")
+        except Exception as e:
+            self._logger.warning(f"Error updating controller during teardown: {e}")
 
         try:
             await self.destroy()
-        except:
-            pass
+        except Exception as e:
+            self._logger.warning(f"Error during player destroy: {e}")
 
     async def get_tracks(
         self,
@@ -574,10 +577,13 @@ class Player(VoiceProtocol):
         
         try:
             await self.disconnect()
-        except:
+        except (AttributeError, RuntimeError) as e:
             # 'NoneType' has no attribute '_get_voice_client_key' raised by self.cleanup() ->
             # assume we're already disconnected and cleaned up
+            self._logger.debug(f"Player already disconnected: {e}")
             assert self.channel is None and not self.is_connected
+        except Exception as e:
+            self._logger.warning(f"Unexpected error during disconnect: {e}")
         
         self._node._players.pop(self.guild.id)
         await self.send(method=RequestMethod.DELETE)
@@ -838,10 +844,14 @@ class Player(VoiceProtocol):
         self._logger.debug(f"Player in {self.guild.name}({self.guild.id}) has been removed all filters.")
 
     async def change_node(self, identifier: str = None) -> None:
-        """Changes the audio processing node for the guild.."""
+        """Changes the audio processing node for the guild."""
         try:
             node = NodePool.get_node(identifier=identifier)
-        except:
+        except (ValueError, KeyError) as e:
+            self._logger.error(f"Failed to get node with identifier {identifier}: {e}")
+            return await self.teardown()
+        except Exception as e:
+            self._logger.error(f"Unexpected error getting node: {e}", exc_info=True)
             return await self.teardown()
 
         self._node._players.pop(self.guild.id)

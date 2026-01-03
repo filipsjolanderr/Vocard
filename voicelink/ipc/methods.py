@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-import time, re
+import time
+import re
+import logging
 
 from typing import List, Dict, Union, Optional, TYPE_CHECKING
 
@@ -70,7 +72,11 @@ async def connect_channel(member: Member, bot: commands.Bot) -> Player:
         player: Player = await channel.connect(cls=Player(bot, channel, TempCtx(member, channel), settings))
         await player.send_ws({"op": "createPlayer", "memberIds": [str(member.id) for member in channel.members]})
         return player
-    except:
+    except (discord.errors.ClientException, AttributeError, RuntimeError) as e:
+        logging.getLogger("vocard.ipc").warning(f"Failed to create player via IPC: {e}")
+        return
+    except Exception as e:
+        logging.getLogger("vocard.ipc").error(f"Unexpected error creating player via IPC: {e}", exc_info=True)
         return
 
 async def initBot(bot: commands.Bot, data: Dict) -> Dict:

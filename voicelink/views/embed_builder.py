@@ -23,6 +23,7 @@ SOFTWARE.
 
 import discord
 import copy
+import logging
 
 from discord.ext import commands
 
@@ -67,7 +68,7 @@ class EmbedBuilderView(discord.ui.View):
             child.disabled = True
         try:
             await self.response.edit(view=self)
-        except:
+        except (discord.errors.NotFound, discord.errors.Forbidden, AttributeError):
             pass
 
     async def interaction_check(self, interaction: discord.Interaction):
@@ -130,8 +131,10 @@ class EmbedBuilderView(discord.ui.View):
 
             data["title"]["name"] = v['title']
             data["title"]["url"] = v['url']
-        except:
-            pass
+        except (KeyError, ValueError, TypeError) as e:
+            logging.getLogger("vocard.views").debug(f"Error parsing embed builder values: {e}")
+        except Exception as e:
+            logging.getLogger("vocard.views").warning(f"Unexpected error in embed builder: {e}")
 
         return await self.response.edit(embed=self.build_embed())
 
@@ -330,7 +333,8 @@ class EmbedBuilderView(discord.ui.View):
 
         try:
             del data["fields"][int(modal.values["index"])]
-        except:
+        except (KeyError, IndexError, ValueError, TypeError) as e:
+            logging.getLogger("vocard.views").debug(f"Error deleting field: {e}")
             return await interaction.followup.send("Can't found the field", ephemeral=True)
         
         return await self.response.edit(embed=self.build_embed())

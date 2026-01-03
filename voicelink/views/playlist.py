@@ -237,7 +237,7 @@ class PlaylistViewManager(DynamicViewManager):
 
         try:
             await self.response.edit(view=self)
-        except:
+        except (discord.errors.NotFound, discord.errors.Forbidden, AttributeError):
             pass
 
     def get_width(self, s):
