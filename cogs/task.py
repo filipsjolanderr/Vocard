@@ -24,9 +24,9 @@ SOFTWARE.
 import voicelink
 import discord
 import function as func
+import asyncio
 
 from discord.ext import commands, tasks
-from addons import Placeholders
 
 class Task(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -36,7 +36,7 @@ class Task(commands.Cog):
         self.cache_cleaner.start()
 
         self.current_act = 0
-        self.placeholder = Placeholders(bot)
+        self.placeholder = voicelink.BotPlaceholder(bot)
 
     def cog_unload(self):
         self.activity_update.cancel()
@@ -48,7 +48,7 @@ class Task(commands.Cog):
         await self.bot.wait_until_ready()
 
         try:
-            act_data = func.settings.activity[(self.current_act + 1) % len(func.settings.activity) - 1]
+            act_data = voicelink.Config().activity[(self.current_act + 1) % len(voicelink.Config().activity) - 1]
             act_original = self.bot.activity
             act_type = getattr(discord.ActivityType, act_data.get("type", "").lower(), discord.ActivityType.playing)
             act_name = self.placeholder.replace(act_data.get("name", ""))
@@ -58,7 +58,7 @@ class Task(commands.Cog):
             if act_original.type != act_type or act_original.name != act_name:
                 self.bot.activity = discord.Activity(type=act_type, name=act_name)
                 await self.bot.change_presence(activity=self.bot.activity, status=status_type)
-                self.current_act = (self.current_act + 1) % len(func.settings.activity)
+                self.current_act = (self.current_act + 1) % len(voicelink.Config().activity)
 
                 func.logger.info(f"Changed the bot status to {act_name}")
 
@@ -67,19 +67,42 @@ class Task(commands.Cog):
 
     @tasks.loop(minutes=5.0)
     async def player_check(self):
+        player_count = 0
         for identifier, node in voicelink.NodePool._nodes.items():
             for guild_id, player in node._players.copy().items():
+                player_count += 1
+                # Add delay every 5 players to prevent CPU spikes
+                if player_count % 5 == 0:
+                    await asyncio.sleep(0.1)  # 100ms delay
+                
                 try:
                     if not player.channel or not player.context or not player.guild:
                         await player.teardown()
                         continue
-                except:
+                except (AttributeError, TypeError) as e:
+                    func.logger.warning(f"Error checking player attributes: {e}")
+                    await player.teardown()
+                    continue
+                except Exception as e:
+                    func.logger.error(f"Unexpected error while checking player: {e}", exc_info=True)
                     await player.teardown()
                     continue
                 
                 try:
+                    # Cache members list to avoid repeated access
                     members = player.channel.members
-                    if (not player.is_playing and player.queue.is_empty) or not any(False if member.bot or member.voice.self_deaf else True for member in members):
+                    members_list = list(members)  # Convert to list once
+                    
+                    # Optimize member checking - iterate only once
+                    has_listener = False
+                    non_bot_members = []
+                    for member in members_list:
+                        if not member.bot:
+                            non_bot_members.append(member)
+                            if not (member.voice and member.voice.self_deaf):
+                                has_listener = True
+                    
+                    if (not player.is_playing and player.queue.is_empty) or not has_listener:
                         if not player.settings.get('24/7', False):
                             await player.teardown()
                             continue
@@ -93,19 +116,17 @@ class Task(commands.Cog):
                         elif not player.guild.me.voice:
                             await player.connect(timeout=0.0, reconnect=True)
 
-                    if player.dj not in members:
-                        for m in members:
-                            if not m.bot:
-                                player.dj = m
-                                break
+                    # Use cached non_bot_members list instead of iterating again
+                    if player.dj not in members_list:
+                        if non_bot_members:
+                            player.dj = non_bot_members[0]
                             
                 except Exception as e:
                     func.logger.error("Error occurred while checking the player!", exc_info=e)
 
     @tasks.loop(hours=12.0)
     async def cache_cleaner(self):
-        func.SETTINGS_BUFFER.clear()
-        func.USERS_BUFFER.clear()
+        await voicelink.MongoDBHandler.cleanup_cache()
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(Task(bot))
