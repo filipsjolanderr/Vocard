@@ -127,8 +127,22 @@ class LangHandler:
             lang = cls._default_lang
 
         lang_dict = cls._langs.get(lang, {})
+        
+        # Map incorrect keys to correct ones (for IPC/dashboard compatibility)
+        key_mapping = {
+            "buttonBack": "player.buttons.back",
+            "buttonSkip": "player.buttons.skip",
+            "buttonLeave": "player.buttons.leave",
+            "playerDropdown": "player.dropdown.trackSelect",
+        }
+        
         if len(keys) == 1:
-            value = lang_dict.get(keys[0])
+            key = keys[0]
+            # Try mapped key first if original key doesn't exist
+            if key not in lang_dict and key in key_mapping:
+                key = key_mapping[key]
+            
+            value = lang_dict.get(key)
             if value is None:
                 # Log missing translation key for debugging
                 import logging
@@ -137,7 +151,9 @@ class LangHandler:
                 return "Not found!"
             return value
 
-        values = [lang_dict.get(key, "Not found!") for key in keys]
+        # Map keys for multiple key lookup
+        mapped_keys = [key_mapping.get(key, key) if key not in lang_dict else key for key in keys]
+        values = [lang_dict.get(key, "Not found!") for key in mapped_keys]
         return values
 
     @classmethod
