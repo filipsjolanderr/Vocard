@@ -396,12 +396,25 @@ async def send_localized_message(
     else:
         localized_text = await LangHandler.get_lang(ctx.guild.id, content_key)
     
-    if localized_text:
+    # Check if translation was found (not "Not found!" or None)
+    if localized_text and localized_text != "Not found!":
         try:
             formatted_text = localized_text.format(*params)
         except (IndexError, KeyError):
             formatted_text = localized_text
     else:
-        formatted_text = "Translation not found."
+        # Generate a fallback message from the key
+        import re
+        key_parts = content_key.split(".")
+        if len(key_parts) > 0:
+            # Convert camelCase/snake_case to readable text
+            last_part = key_parts[-1]
+            # Split camelCase: "autoPlay" -> "auto Play"
+            last_part = re.sub(r'([a-z])([A-Z])', r'\1 \2', last_part)
+            # Split on underscores and spaces, then capitalize
+            fallback = ' '.join(word.capitalize() for word in last_part.replace('_', ' ').split())
+            formatted_text = f"[{fallback}]"  # Show in brackets to indicate it's a fallback
+        else:
+            formatted_text = "[Translation Missing]"
 
     return await dispatch_message(ctx, content=formatted_text, **kwargs)
