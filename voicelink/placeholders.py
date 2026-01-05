@@ -162,7 +162,18 @@ class PlayerPlaceholder:
         return self.bot.user.display_avatar.url if self.player else "https://i.imgur.com/dIFBwU7.png"
     
     def translation(self, text: str) -> str:
-        return self.player.get_msg(text)
+        result = self.player.get_msg(text)
+        # If translation not found, try to extract a readable name from the key
+        if result == "Not found!":
+            # Extract the last part of the key as a fallback (e.g., "autoPlay" from "player.buttons.autoPlay")
+            key_parts = text.split(".")
+            if len(key_parts) > 0:
+                # Convert camelCase to Title Case
+                last_part = key_parts[-1]
+                fallback = ''.join(word.capitalize() for word in last_part.replace('_', ' ').split())
+                return fallback
+            return text
+        return result
         
     def replace(self, text: str, variables: dict[str, str]) -> str:
         if not text or text.isspace(): return

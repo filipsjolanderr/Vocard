@@ -128,7 +128,13 @@ class LangHandler:
 
         lang_dict = cls._langs.get(lang, {})
         if len(keys) == 1:
-            value = lang_dict.get(keys[0], "Not found!")
+            value = lang_dict.get(keys[0])
+            if value is None:
+                # Log missing translation key for debugging
+                import logging
+                logger = logging.getLogger("vocard.language")
+                logger.warning(f"Missing translation key: {keys[0]} for language: {lang}")
+                return "Not found!"
             return value
 
         values = [lang_dict.get(key, "Not found!") for key in keys]
