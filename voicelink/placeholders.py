@@ -174,10 +174,24 @@ class PlayerPlaceholder:
             # Extract the last part of the key as a fallback (e.g., "autoPlay" from "player.buttons.autoPlay")
             key_parts = text.split(".")
             if len(key_parts) > 0:
-                # Convert camelCase to Title Case
+                # Convert camelCase to Title Case properly
+                import re
                 last_part = key_parts[-1]
-                fallback = ''.join(word.capitalize() for word in last_part.replace('_', ' ').split())
-                return fallback
+                # Split camelCase: "autoPlay" -> "auto Play", but keep common words together
+                # For button labels, we want "Autoplay" not "Auto Play"
+                if len(last_part) > 0:
+                    # Capitalize first letter, then split camelCase
+                    last_part = re.sub(r'([a-z])([A-Z])', r'\1 \2', last_part)
+                    # Split on underscores and spaces, then capitalize each word
+                    words = last_part.replace('_', ' ').split()
+                    # Join words but keep them together for common button names
+                    if len(words) == 1:
+                        # Single word: capitalize first letter
+                        fallback = words[0].capitalize()
+                    else:
+                        # Multiple words: capitalize each
+                        fallback = ' '.join(word.capitalize() for word in words)
+                    return fallback
             return text
         return result
         
