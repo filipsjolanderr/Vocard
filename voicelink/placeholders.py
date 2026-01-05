@@ -32,6 +32,7 @@ from typing import TYPE_CHECKING, List, Callable
 
 from .config import Config
 from .utils import format_ms
+from .language import LangHandler
 
 if TYPE_CHECKING:
     from .player import Player
@@ -162,7 +163,12 @@ class PlayerPlaceholder:
         return self.bot.user.display_avatar.url if self.player else "https://i.imgur.com/dIFBwU7.png"
     
     def translation(self, text: str) -> str:
-        result = self.player.get_msg(text)
+        if not self.player:
+            # If no player, try to get translation from default language
+            result = LangHandler._get_lang(LangHandler._default_lang, text)
+        else:
+            result = self.player.get_msg(text)
+        
         # If translation not found, try to extract a readable name from the key
         if result == "Not found!":
             # Extract the last part of the key as a fallback (e.g., "autoPlay" from "player.buttons.autoPlay")
