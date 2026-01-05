@@ -403,18 +403,26 @@ async def send_localized_message(
         except (IndexError, KeyError):
             formatted_text = localized_text
     else:
-        # Generate a fallback message from the key
-        import re
-        key_parts = content_key.split(".")
-        if len(key_parts) > 0:
-            # Convert camelCase/snake_case to readable text
-            last_part = key_parts[-1]
-            # Split camelCase: "autoPlay" -> "auto Play"
-            last_part = re.sub(r'([a-z])([A-Z])', r'\1 \2', last_part)
-            # Split on underscores and spaces, then capitalize
-            fallback = ' '.join(word.capitalize() for word in last_part.replace('_', ' ').split())
-            formatted_text = f"[{fallback}]"  # Show in brackets to indicate it's a fallback
+        # Try to get from default language as fallback
+        default_text = LangHandler._get_lang(LangHandler._default_lang, content_key)
+        if default_text and default_text != "Not found!":
+            try:
+                formatted_text = default_text.format(*params)
+            except (IndexError, KeyError):
+                formatted_text = default_text
         else:
-            formatted_text = "[Translation Missing]"
+            # Generate a fallback message from the key
+            import re
+            key_parts = content_key.split(".")
+            if len(key_parts) > 0:
+                # Convert camelCase/snake_case to readable text
+                last_part = key_parts[-1]
+                # Split camelCase: "autoPlay" -> "auto Play"
+                last_part = re.sub(r'([a-z])([A-Z])', r'\1 \2', last_part)
+                # Split on underscores and spaces, then capitalize
+                fallback = ' '.join(word.capitalize() for word in last_part.replace('_', ' ').split())
+                formatted_text = f"[{fallback}]"  # Show in brackets to indicate it's a fallback
+            else:
+                formatted_text = "[Translation Missing]"
 
     return await dispatch_message(ctx, content=formatted_text, **kwargs)

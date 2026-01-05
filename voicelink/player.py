@@ -267,7 +267,11 @@ class Player(VoiceProtocol):
         """Retrieves a localized message or list of messages based on the given keys
            for the guild associated with this player.
         """
-        return LangHandler._get_lang(self.settings.get("lang"), *keys)
+        lang = self.settings.get("lang")
+        # If lang is None or empty, use default language
+        if not lang:
+            lang = LangHandler._default_lang
+        return LangHandler._get_lang(lang, *keys)
 
     def required(self, leave: bool = False):
         """
