@@ -213,7 +213,16 @@ class PlayerPlaceholder:
 
             try:
                 # Replace variable placeholders with their values
-                expression = re.sub(r'@@(.*?)@@', lambda x: "'" + variables.get(x.group(1), '') + "'", expression)
+                # Properly escape quotes in string values to prevent SyntaxError
+                def escape_string(value):
+                    """Escape quotes and backslashes in string values for safe eval."""
+                    if not isinstance(value, str):
+                        return repr(value)
+                    # Escape backslashes first, then quotes
+                    value = value.replace('\\', '\\\\').replace("'", "\\'")
+                    return f"'{value}'"
+                
+                expression = re.sub(r'@@(.*?)@@', lambda x: escape_string(variables.get(x.group(1), '')), expression)
                 expression = re.sub(r"'(\d+)'", lambda x: str(int(x.group(1))), expression)
                 expression = re.sub(r"'(\d+)'\s*([><=!]+)\s*(\d+)", lambda x: f"{int(x.group(1))} {x.group(2)} {int(x.group(3))}", expression)
 
