@@ -140,6 +140,7 @@ class Player(VoiceProtocol):
         self._last_position: int = 0
         self._last_update: int = 0
         self._ending_track: Optional[Track] = None
+        self._autoplay_base_track: Optional[Track] = None
 
         self._voice_state: dict = {}
 
@@ -423,6 +424,18 @@ class Player(VoiceProtocol):
             if self.autoplay and await self.get_recommendations():
                 return await self.do_next()
         else:
+            # Clear autoplay base track if it's being played
+            if self._autoplay_base_track and (track is self._autoplay_base_track or track.track_id == self._autoplay_base_track.track_id):
+                # Auto-update autoplay base to next track in queue if autoplay is still on
+                if self.autoplay:
+                    next_tracks = self.queue.tracks()
+                    if next_tracks:
+                        self._autoplay_base_track = next_tracks[0]
+                    else:
+                        self._autoplay_base_track = None
+                else:
+                    self._autoplay_base_track = None
+            
             try:
                 await self.play(track, start=track.position)
             except Exception as e:
@@ -639,16 +652,30 @@ class Player(VoiceProtocol):
         """Adds one or more tracks to the queue."""
         tracks: List[Track] = []
         _duplicate_tracks = [] if self.queue._allow_duplicate and duplicate else [track.uri for track in self.queue._queue]
-        raw_tracks = raw_tracks[0] if isinstance(raw_tracks, List) and len(raw_tracks) == 1 else raw_tracks
+        is_list = isinstance(raw_tracks, List)
+        
+        # If autoplay is on and not explicitly adding at front, add at front and set first track as autoplay base
+        if self.autoplay and not at_front:
+            at_front = True
+            if is_list and len(raw_tracks) > 0:
+                self._autoplay_base_track = raw_tracks[0]
+            elif not is_list:
+                self._autoplay_base_track = raw_tracks
+        
+        # Convert single-item list to just the item for consistency
+        if is_list and len(raw_tracks) == 1:
+            raw_tracks = raw_tracks[0]
+            is_list = False
 
+        position = -1
         try:
-            if (is_list := isinstance(raw_tracks, List)):
+            if is_list:
                 for track in raw_tracks:
                     if track.uri in _duplicate_tracks:
                         continue
 
                     self._validate_time(track, start_time, end_time)
-                    self.queue.put_at_front(track) if at_front else self.queue.put(track)  
+                    self.queue.put_at_front(track) if at_front else self.queue.put(track)
                     tracks.append(track)
                     _duplicate_tracks.append(track.uri)
             else:
@@ -670,6 +697,18 @@ class Player(VoiceProtocol):
     async def remove_track(self, index: int, index2: int = None, remove_target: Member = None, requester: Member = None) -> Dict[int, Track]:
         """Removes one or more tracks from the queue."""
         removed_tracks = self.queue.remove(index, index2, remove_target)
+        
+        # Check if autoplay base track was removed and update it
+        if removed_tracks and self._autoplay_base_track:
+            removed_track_ids = {track.track_id for track in removed_tracks.values()}
+            if self._autoplay_base_track.track_id in removed_track_ids:
+                # Update autoplay base to next track in queue if available
+                next_track = self.queue.tracks()
+                if next_track and self.autoplay:
+                    self._autoplay_base_track = next_track[0]
+                else:
+                    self._autoplay_base_track = None
+        
         if removed_tracks and self.is_ipc_connected:
             await self.send_ws({
                 "op": "removeTrack",
@@ -724,8 +763,25 @@ class Player(VoiceProtocol):
         if len(replacement) < 3:
             raise VoicelinkException(self.get_msg('player.controls.shuffle.error'))
         
+        # Store autoplay base track ID before shuffle
+        autoplay_base_id = self._autoplay_base_track.track_id if self._autoplay_base_track else None
+        
         shuffle(replacement)
         self.queue.replace(queue_type, replacement)
+        
+        # Update autoplay base track after shuffle - find it in the new order
+        if autoplay_base_id and queue_type == "queue" and self.autoplay:
+            for track in replacement:
+                if track.track_id == autoplay_base_id:
+                    self._autoplay_base_track = track
+                    break
+            else:
+                # If autoplay base track not found, set to first track in queue
+                if replacement:
+                    self._autoplay_base_track = replacement[0]
+                else:
+                    self._autoplay_base_track = None
+        
         self.shuffle_votes.clear()
         if self.is_ipc_connected:
             await self.send_ws({
@@ -801,6 +857,9 @@ class Player(VoiceProtocol):
             self.queue.history_clear(self.is_playing)
         elif queue_type == "queue":
             self.queue.clear()
+            # Clear autoplay base track when queue is cleared
+            if self._autoplay_base_track:
+                self._autoplay_base_track = None
         
         if self.is_ipc_connected:
             await self.send_ws({
@@ -870,10 +929,14 @@ class Player(VoiceProtocol):
     async def get_recommendations(self, *, track: Optional[Track] = None) -> bool:
         """Fetches and adds recommended tracks based on the provided track or recent history."""
         if not track:
-            try:
-                track = choice(self.queue.history(incTrack=True)[-5:])
-            except IndexError:
-                return False
+            # Use autoplay base track if available, otherwise fall back to history
+            if self._autoplay_base_track:
+                track = self._autoplay_base_track
+            else:
+                try:
+                    track = choice(self.queue.history(incTrack=True)[-5:])
+                except IndexError:
+                    return False
 
         tracks = await track.get_recommendations(self._node)
         if tracks:

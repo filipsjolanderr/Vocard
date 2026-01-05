@@ -102,3 +102,5 @@ To make bot functionality tests fully runnable:
 1. Create a test settings.json mock fixture
 2. Mock Config initialization properly
 3. Ensure all dependencies are mocked before import
+
+

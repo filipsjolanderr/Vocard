@@ -66,3 +66,5 @@ pytest tests/ --cov=. --cov-report=html
 - Tests use extensive mocking to avoid requiring actual Discord/MongoDB connections
 - Settings.json is mocked to prevent file system dependencies
 - All async operations are properly tested with pytest-asyncio
+
+
