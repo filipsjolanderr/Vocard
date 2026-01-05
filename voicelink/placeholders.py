@@ -172,26 +172,38 @@ class PlayerPlaceholder:
         # If translation not found, try to extract a readable name from the key
         if result == "Not found!":
             # Extract the last part of the key as a fallback (e.g., "autoPlay" from "player.buttons.autoPlay")
+            import re
             key_parts = text.split(".")
+            
+            # Always use the last part of the key (e.g., "skip" from "player.buttons.skip")
             if len(key_parts) > 0:
-                # Convert camelCase to Title Case properly
-                import re
                 last_part = key_parts[-1]
-                # Split camelCase: "autoPlay" -> "auto Play", but keep common words together
-                # For button labels, we want "Autoplay" not "Auto Play"
-                if len(last_part) > 0:
-                    # Capitalize first letter, then split camelCase
-                    last_part = re.sub(r'([a-z])([A-Z])', r'\1 \2', last_part)
-                    # Split on underscores and spaces, then capitalize each word
-                    words = last_part.replace('_', ' ').split()
-                    # Join words but keep them together for common button names
-                    if len(words) == 1:
-                        # Single word: capitalize first letter
-                        fallback = words[0].capitalize()
-                    else:
-                        # Multiple words: capitalize each
-                        fallback = ' '.join(word.capitalize() for word in words)
-                    return fallback
+            else:
+                last_part = text
+            
+            if len(last_part) > 0:
+                # For keys like "buttonSkip", "playerDropdown", remove common prefix words
+                # But preserve keys like "autoPlay", "volumeUp" where the prefix is part of the word
+                common_prefixes = ['button', 'player', 'dropdown']
+                for prefix in common_prefixes:
+                    if last_part.lower().startswith(prefix.lower()) and len(last_part) > len(prefix):
+                        # Check if next character is uppercase (e.g., "buttonSkip")
+                        if last_part[len(prefix):len(prefix)+1].isupper():
+                            last_part = last_part[len(prefix):]
+                            break
+                
+                # Split camelCase: "autoPlay" -> "auto Play", "trackSelect" -> "track Select"
+                last_part = re.sub(r'([a-z])([A-Z])', r'\1 \2', last_part)
+                # Split on underscores and spaces, then capitalize each word
+                words = last_part.replace('_', ' ').split()
+                
+                if len(words) == 1:
+                    # Single word: capitalize first letter
+                    fallback = words[0].capitalize()
+                else:
+                    # Multiple words: capitalize each
+                    fallback = ' '.join(word.capitalize() for word in words)
+                return fallback
             return text
         return result
         
