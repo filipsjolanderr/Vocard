@@ -355,6 +355,7 @@ class Player(VoiceProtocol):
             "token": state['event']['token'],
             "endpoint": state['event']['endpoint'],
             "sessionId": state['sessionId'],
+            "channelId": str(self.channel.id) if self.channel else ""
         }
         
         await self.send(method=RequestMethod.PATCH, data={"voice": data})
@@ -658,9 +659,12 @@ class Player(VoiceProtocol):
         _duplicate_tracks = [] if self.queue._allow_duplicate and duplicate else [track.uri for track in self.queue._queue]
         is_list = isinstance(raw_tracks, List)
         
-        # If autoplay is on and not explicitly adding at front, add at front and set first track as autoplay base
+        # If autoplay is on and not explicitly adding at front, add at front
         if self.autoplay and not at_front:
             at_front = True
+        
+        # If autoplay is on, always update autoplay base track to the newly queued song
+        if self.autoplay:
             if is_list and len(raw_tracks) > 0:
                 self._autoplay_base_track = raw_tracks[0]
             elif not is_list:

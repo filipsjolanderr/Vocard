@@ -316,11 +316,11 @@ class TestAutoplayQueueBehavior:
         # Verify track was added at front
         assert position == 1
         assert len(real_queue._queue) == 1
-        
-        # When at_front is explicitly True, the autoplay logic doesn't set base track
-        # because it only sets it when at_front=False. This is expected behavior.
-        # The track is still added at front, which is what we want.
         assert real_queue._queue[0] == mock_track
+        
+        # When autoplay is enabled, the autoplay base track should be set to the newly queued song
+        # regardless of whether at_front is True or False
+        assert player._autoplay_base_track == mock_track
 
     @pytest.mark.asyncio
     async def test_autoplay_with_list_of_tracks(self, mock_player, mock_track, mock_track2):

@@ -229,4 +229,3 @@ class TestTranslationFallbacks:
             assert not result.startswith("[")
             assert isinstance(result, str)
             assert len(result) > 0
-
