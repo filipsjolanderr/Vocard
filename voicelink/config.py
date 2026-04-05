@@ -98,6 +98,8 @@ class Config:
         self.lyrics_platform: str = settings.get("lyrics_platform", "A_ZLyrics").lower()
         self.ipc_client: Dict[str, Union[str, bool, int]] = settings.get("ipc_client", {})
         self.playlist_settings: Dict[str, Union[str, int]] = settings.get("playlist_settings", {})
+        self.spotify_client_id: str = settings.get("spotify_client_id") or os.getenv("SPOTIFY_CLIENT_ID")
+        self.spotify_client_secret: str = settings.get("spotify_client_secret") or os.getenv("SPOTIFY_CLIENT_SECRET")
         self.version: str = settings.get("version", "")
         
         self.initialized = True

@@ -178,7 +178,7 @@ class Playlist:
         self.uri: str = None
         
         self.tracks = [
-            Track(track_id=track["encoded"], info=track["info"], requester=requester)
+            track if isinstance(track, Track) else Track(track_id=track.get("encoded"), info=track.get("info"), requester=requester)
             for track in tracks
         ]
 
@@ -191,3 +191,33 @@ class Playlist:
     @property
     def track_count(self) -> int:
         return len(self.tracks)
+
+class SpotifyTrack(Track):
+    def __init__(self, metadata: dict, requester: Member):
+        self.info = {
+            "title": metadata["title"],
+            "author": metadata["author"],
+            "uri": metadata["uri"],
+            "identifier": metadata["uri"].split("/")[-1],
+            "length": 0,
+            "sourceName": "spotify",
+            "isStream": False,
+            "isSeekable": True,
+            "position": 0,
+            "artworkUrl": None
+        }
+        super().__init__(info=self.info, requester=requester)
+        self._track_id = None
+
+    async def search(self, node: Node) -> Optional[Track]:
+        """Resolves the Spotify track into a playable YouTube track."""
+        query = f"ytmsearch:{self.title} {self.author}"
+        tracks = await node.get_tracks(query, requester=self.requester)
+        if tracks:
+            # Update self with the found track's info but keep Spotify metadata where useful
+            yt_track = tracks[0]
+            self._track_id = yt_track.track_id
+            self.length = yt_track.length
+            self.thumbnail = yt_track.thumbnail
+            return yt_track
+        return None

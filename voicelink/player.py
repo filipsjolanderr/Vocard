@@ -48,7 +48,7 @@ from discord.ext import commands
 from . import events
 from .config import Config
 from .pool import Node, NodePool
-from .objects import Track, Playlist
+from .objects import Track, Playlist, SpotifyTrack
 from .filters import Filter, Filters
 from .enums import SearchType, LoopType, RequestMethod
 from .events import VoicelinkEvent, TrackEndEvent, TrackStartEvent, TrackExceptionEvent
@@ -59,6 +59,7 @@ from .mongodb import MongoDBHandler
 from .language import LangHandler
 from .views import InteractiveController
 from .utils import format_ms, dispatch_message
+from .spotify import SpotifyClient, SPOTIFY_URL_REGEX
 
 if TYPE_CHECKING:
     from .ipc import IPCClient
@@ -156,6 +157,10 @@ class Player(VoiceProtocol):
 
         self._ph = PlayerPlaceholder(client, self)
         self._logger: Optional[logging.Logger] = self._node._logger
+
+        self.spotify: Optional[SpotifyClient] = None
+        if (config := Config()).spotify_client_id and config.spotify_client_secret:
+            self.spotify = SpotifyClient(config.spotify_client_id, config.spotify_client_secret)
 
     def __repr__(self):
         return (
@@ -398,6 +403,13 @@ class Player(VoiceProtocol):
 
         if isinstance(event, TrackStartEvent):
             self._ending_track = self._current
+            # Pre-fetch next track if it's a SpotifyTrack
+            next_track = self.queue.get()
+            if next_track:
+                # Put it back since we only wanted to peek/pre-fetch
+                self.queue._position -= 1
+                if isinstance(next_track, SpotifyTrack) and not next_track._track_id:
+                    self._bot.loop.create_task(next_track.search(self._node))
 
         self._logger.debug(f"Player in {self.guild.name}({self.guild.id}) dispatched event {event_type}.")
 
@@ -563,6 +575,16 @@ class Player(VoiceProtocol):
         if not search_type:
             search_type = Config().search_platform
             
+        if self.spotify and SPOTIFY_URL_REGEX.match(query):
+            records = await self.spotify.get_records(query)
+            if not records:
+                return None
+            
+            tracks = [SpotifyTrack(record, requester=requester) for record in records]
+            if len(tracks) > 1:
+                return Playlist(playlist_info={"name": "Spotify Playlist"}, tracks=tracks, requester=requester)
+            return tracks
+
         return await self._node.get_tracks(query, requester=requester, search_type=search_type)
 
     async def connect(self, *, timeout: float, reconnect: bool, self_deaf: bool = True, self_mute: bool = False):
@@ -617,6 +639,10 @@ class Player(VoiceProtocol):
         """Plays a track."""
         if not self._node:
             return track
+
+        if isinstance(track, SpotifyTrack) and not track._track_id:
+            if not await track.search(self._node):
+                return await self.do_next()
 
         data = {
             "encodedTrack": track.track_id,
@@ -942,12 +968,13 @@ class Player(VoiceProtocol):
                 track = self._autoplay_base_track
             else:
                 try:
-                    track = choice(self.queue.history(incTrack=True)[-5:])
+                    track = choice(self.queue.history(incTrack=True)[-10:])
                 except IndexError:
                     return False
 
         tracks = await track.get_recommendations(self._node)
         if tracks:
+            shuffle(tracks)
             await self.add_track(tracks, duplicate=False)
             
             self._logger.debug(f"Player in {self.guild.name}({self.guild.id}) has been requested recommendations.")
