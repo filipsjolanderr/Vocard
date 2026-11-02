@@ -23,6 +23,7 @@ SOFTWARE.
 
 import os
 import asyncio
+import aiohttp
 import discord
 import voicelink
 import function as func
@@ -44,11 +45,20 @@ class Listeners(commands.Cog):
         
     async def start_nodes(self) -> None:
         """Connect and intiate nodes."""
-        for n in Config().nodes.values():
+        await asyncio.gather(*(self.start_node(n) for n in Config().nodes.values()))
+
+    async def start_node(self, n: dict, max_delay: int = 60) -> None:
+        """Connect a node, retrying with backoff until it is up (Lavalink can start after the bot)."""
+        session = aiohttp.ClientSession()
+        delay = 5
+        while True:
             try:
-                await self.voicelink.create_node(bot=self.bot, **n)
+                await self.voicelink.create_node(bot=self.bot, session=session, **n)
+                return
             except Exception as e:
-                func.logger.error(f'Node {n["identifier"]} is not able to connect! - Reason: {e}')
+                func.logger.error(f'Node {n["identifier"]} is not able to connect! - Reason: {e} Retrying in {delay}s')
+            await asyncio.sleep(delay)
+            delay = min(delay * 2, max_delay)
 
     async def restore_last_session_players(self) -> None:
         """Re-establish connections for players from the last session."""
